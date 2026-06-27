@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OWNER'S 広告分析ツール（渡辺チーム）</title>
+<style>
+  :root{
+    --bg:#f3f4f8; --panel:#ffffff; --panel2:#f6f7fb; --line:#e7e8ef;
+    --ink:#1f2433; --sub:#5d6473; --mute:#9aa0b2;
+    --pp:#6c4cf0; --pp2:#5a3fe0; --pp-soft:#efeafe; --pp-soft2:#f5f2ff;
+    --navy:#222b45;
+    --green:#16a34a; --green-bg:#e8f6ec; --green-soft:#eafaf0;
+    --amber:#c2820b; --amber-bg:#fdf4dd;
+    --red:#d83b3f; --red-bg:#fdebeb;
+    --blue:#3b6fe0;
+    --shadow:0 1px 2px rgba(20,24,60,.04),0 2px 8px rgba(20,24,60,.05);
+    --shadow-card:0 1px 3px rgba(20,24,60,.05),0 6px 18px rgba(20,24,60,.06);
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55;}
+
+  /* ===== レイアウト ===== */
+  .app{display:flex;min-height:100vh;}
+  .sidebar{width:248px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+  /* ロゴ（紫ブロック） */
+  .side-logo{background:linear-gradient(135deg,var(--pp),var(--pp2));color:#fff;padding:20px 22px;}
+  .side-logo b{display:block;font-size:21px;font-weight:800;letter-spacing:.6px;}
+  .side-logo span{display:block;font-size:11.5px;color:rgba(255,255,255,.85);margin-top:3px;}
+
+  /* 縦メニュー */
+  .side-nav{padding:18px 14px;display:flex;flex-direction:column;gap:4px;flex:1;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:none;
+    background:transparent;color:var(--sub);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    width:100%;text-align:left;transition:all .15s;}
+  .nav-item .ni{width:22px;display:flex;align-items:center;justify-content:center;}
+  .nav-item svg,.kpi-ic svg,.verdict-ic svg,.bell svg,.srcbadge svg,.banner svg{display:block;}
+  .nav-item:hover{background:var(--panel2);color:var(--ink);}
+  .nav-item.active{background:var(--pp-soft);color:var(--pp2);font-weight:800;}
+
+  .side-foot{padding:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px;}
+  .upd-box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .upd-box .ub-k{font-size:10.5px;color:var(--mute);font-weight:700;}
+  .upd-box .ub-v{font-size:12px;color:var(--ink);font-weight:700;margin-top:2px;}
+  .upd-btn{background:var(--pp-soft);border:none;color:var(--pp2);width:32px;height:32px;border-radius:9px;
+    cursor:pointer;font-size:15px;flex-shrink:0;}
+  .upd-btn:active{transform:scale(.95);}
+  .agency-box{display:flex;align-items:center;gap:10px;padding:6px 4px;}
+  .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--pp),var(--pp2));
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
+  .agency-box .ab-n{font-size:13px;font-weight:800;color:var(--ink);}
+  .agency-box .ab-s{font-size:11px;color:var(--mute);}
+
+  /* ===== メイン上部バー ===== */
+  .topbar{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 26px;}
+  .page-title{font-size:21px;font-weight:800;color:var(--ink);}
+  .tb-right{display:flex;align-items:center;gap:14px;}
+  .srcbadge{font-size:11.5px;font-weight:800;padding:6px 12px;border-radius:999px;white-space:nowrap;border:1px solid transparent;display:inline-flex;align-items:center;gap:6px;}
+  .srcbadge.live{background:var(--green-bg);color:#15803d;border-color:#bce7c8;}
+  .srcbadge.partial{background:var(--amber-bg);color:#a96809;border-color:#ecd79a;}
+  .srcbadge.dummy{background:var(--red-bg);color:#c4302b;border-color:#f3c0bd;}
+  .srcdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .srcbadge.live .srcdot{background:#16a34a;}
+  .srcbadge.partial .srcdot{background:#e0a000;}
+  .srcbadge.dummy .srcdot{background:#d83b3f;}
+  .reload{background:var(--pp);border:none;color:#fff;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:800;
+    font-family:inherit;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(108,76,240,.3);transition:all .15s;}
+  .reload:hover{background:var(--pp2);}
+  .reload:active{transform:scale(.97);}
+  .reload:disabled{background:var(--mute);box-shadow:none;cursor:not-allowed;opacity:.85;}
+  @media(max-width:520px){.reload{font-size:11px;padding:8px 12px;}}
+  .bell{position:relative;background:var(--panel2);border:1px solid var(--line);width:40px;height:40px;border-radius:12px;
+    cursor:pointer;font-size:17px;color:var(--sub);}
+  .bell .dot{position:absolute;top:8px;right:9px;width:8px;height:8px;background:var(--red);border-radius:50%;border:2px solid #fff;}
+  .who{display:flex;align-items:center;gap:9px;cursor:default;}
+  .who .ab-n{font-size:13px;font-weight:800;color:var(--ink);}
+  .who .av{width:34px;height:34px;}
+
+  .content{padding:22px 26px 90px;max-width:1280px;width:100%;}
+
+  /* ===== 共通 ===== */
+  .banner{margin:0 0 18px;background:var(--amber-bg);border:1px solid #ecd79a;color:#8a5a06;border-radius:14px;
+    padding:13px 16px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;}
+  .banner .bx{background:none;border:none;color:#a96809;font-size:17px;cursor:pointer;}
+  .meta-line{color:var(--mute);font-size:12px;margin:0 0 16px;}
+  .row-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 18px;}
+  .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px;box-shadow:var(--shadow);}
+  .seg button{background:transparent;border:none;color:var(--sub);font-family:inherit;font-size:13px;font-weight:700;
+    padding:8px 20px;border-radius:999px;cursor:pointer;transition:all .15s;}
+  .seg button.active{background:var(--pp);color:#fff;box-shadow:0 2px 8px rgba(108,76,240,.3);}
+  .count{font-size:12.5px;color:var(--mute);margin-left:auto;font-weight:600;}
+  select,input[type=text]{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-family:inherit;
+    font-size:13px;border-radius:11px;padding:10px 13px;outline:none;box-shadow:var(--shadow);}
+  input[type=text]{width:100%;}
+  select:focus,input:focus{border-color:var(--pp);box-shadow:0 0 0 3px rgba(108,76,240,.12);}
+  .grow{flex:1 1 auto;}
+
+  /* ===== 総合評価 ===== */
+  .verdict{border-radius:20px;padding:22px 24px;margin:0 0 18px;border:1px solid var(--line);background:var(--panel);
+    display:flex;align-items:center;gap:18px;box-shadow:var(--shadow-card);overflow:hidden;position:relative;}
+  .verdict.good{background:linear-gradient(110deg,var(--green-soft),#fff 65%);border-color:#bce7c8;}
+  .verdict.mid{background:linear-gradient(110deg,var(--amber-bg),#fff 65%);border-color:#ecd79a;}
+  .verdict.bad{background:linear-gradient(110deg,var(--red-bg),#fff 65%);border-color:#f3c0bd;}
+  .verdict-ic{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:34px;flex-shrink:0;background:#fff;border:3px solid;}
+  .verdict.good .verdict-ic{border-color:#9adcb0;color:var(--green);}
+  .verdict.mid .verdict-ic{border-color:#e6cd85;color:var(--amber);}
+  .verdict.bad .verdict-ic{border-color:#f0b3af;color:var(--red);}
+  .verdict .lab{font-size:24px;font-weight:800;}
+  .verdict.good .lab{color:#15803d;}
+  .verdict.mid .lab{color:#a96809;}
+  .verdict.bad .lab{color:#c4302b;}
+  .verdict .note{font-size:13px;color:var(--sub);margin-top:5px;}
+
+  /* ===== KPIカード ===== */
+  .cards{display:grid;grid-template-columns:repeat(1,1fr);gap:14px;}
+  @media(min-width:640px){.cards{grid-template-columns:repeat(2,1fr);}}
+  @media(min-width:1000px){.cards{grid-template-columns:repeat(3,1fr);}}
+  .kpi{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;
+    box-shadow:var(--shadow-card);display:flex;align-items:flex-start;gap:14px;}
+  .kpi-ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    font-size:21px;flex-shrink:0;font-weight:800;}
+  .kpi-ic.tp{background:var(--pp-soft);color:var(--pp2);}
+  .kpi-ic.tg{background:var(--green-bg);color:var(--green);}
+  .kpi-ic.ta{background:var(--amber-bg);color:var(--amber);}
+  .kpi-ic.tr{background:var(--red-bg);color:var(--red);}
+  .kpi-body{min-width:0;flex:1;}
+  .kpi-k{font-size:12.5px;color:var(--sub);font-weight:700;}
+  .kpi-v{font-size:26px;font-weight:800;letter-spacing:.3px;color:var(--ink);margin-top:3px;line-height:1.15;}
+  .kpi-v.sm{font-size:21px;}
+  .kpi-v.j-good{color:var(--green);} .kpi-v.j-ok{color:var(--amber);} .kpi-v.j-bad{color:var(--red);} .kpi-v.j-muted{color:var(--mute);}
+  .kpi-sub{font-size:11.5px;color:var(--mute);margin-top:4px;}
+  .note2{font-size:10.5px;color:#a96809;margin-top:7px;line-height:1.4;}
+  .kbadge{position:absolute;top:16px;right:16px;font-size:11px;font-weight:800;padding:4px 11px;border-radius:999px;border:1px solid transparent;}
+  .kbadge.b-good{background:var(--green-bg);color:#15803d;border-color:#bce7c8;}
+  .kbadge.b-ok{background:var(--amber-bg);color:#a96809;border-color:#ecd79a;}
+  .kbadge.b-bad{background:var(--red-bg);color:#c4302b;border-color:#f3c0bd;}
+
+  /* ===== クリエイティブカード ===== */
+  .cgrid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:640px){.cgrid{grid-template-columns:repeat(2,1fr);}}
+  @media(min-width:1100px){.cgrid{grid-template-columns:repeat(3,1fr);}}
+  .cc{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;
+    flex-direction:column;border-top:3px solid var(--line);box-shadow:var(--shadow-card);}
+  .cc.s-on{border-top-color:#f0c33c;}
+  .cc.s-off{border-top-color:#cdd4dd;}
+  .cc.s-ng{border-top-color:var(--red);}
+  .cc .kv{width:100%;aspect-ratio:1/1;background:var(--panel2);object-fit:cover;display:block;}
+  .cc .kv.ph{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:12px;}
+  .cc .body{padding:15px;display:flex;flex-direction:column;gap:10px;flex:1;}
+  .ck{font-size:12px;color:var(--blue);word-break:break-all;font-weight:700;font-family:ui-monospace,monospace;}
+  .ctitle{font-size:14px;font-weight:700;line-height:1.45;color:var(--ink);}
+  .pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:4px 11px;border-radius:999px;width:fit-content;border:1px solid transparent;}
+  .pill.on{background:#fdf3d0;color:#876a00;border-color:#efd98c;}
+  .pill.off{background:#eef1f4;color:#5b6675;border-color:#d8dde3;}
+  .pill.ng{background:var(--red-bg);color:#b42318;border-color:#f3c0bd;}
+  .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:2px;}
+  .mini .m{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:9px 6px;text-align:center;}
+  .mini .m .mk{font-size:9.5px;color:var(--mute);font-weight:600;}
+  .mini .m .mv{font-size:13.5px;font-weight:800;margin-top:2px;color:var(--ink);}
+  .scoreline{display:flex;gap:8px;font-size:11px;color:var(--sub);background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:9px 11px;line-height:1.5;}
+  .scoreline .sc-tx{white-space:pre-line;}
+  .scoreline .sc-ic{flex-shrink:0;margin-top:1px;}
+  .scoreline.sc-good .sc-ic{color:var(--green);}
+  .scoreline.sc-mid .sc-ic{color:var(--amber);}
+  .scoreline.sc-bad .sc-ic{color:var(--red);}
+  .ctext{font-size:11.5px;color:var(--mute);line-height:1.5;max-height:3.6em;overflow:hidden;}
+  /* 広告文（メインテキスト）：エリア内だけ縦スクロールで全文表示（カード高さは伸ばさない） */
+  .ctext-body{max-height:6em;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--line) transparent;}
+  .ctext-body::-webkit-scrollbar{width:6px;}
+  .ctext-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+  .ctext-body::-webkit-scrollbar-track{background:transparent;}
+
+  /* ===== 履歴テーブル（グラフなし） ===== */
+  .hcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-card);overflow:hidden;margin-bottom:16px;}
+  .hcard-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .hcard-head img,.hcard-head .ph{width:46px;height:46px;border-radius:11px;object-fit:cover;flex-shrink:0;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:9px;}
+  .hcard-head .hk{font-size:12.5px;color:var(--blue);font-weight:700;font-family:ui-monospace,monospace;word-break:break-all;}
+  .htbl-wrap{overflow-x:auto;}
+  table.htbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px;}
+  table.htbl th,table.htbl td{padding:10px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);}
+  table.htbl th{background:var(--panel2);color:var(--sub);font-weight:700;font-size:11px;text-align:right;}
+  table.htbl th:first-child,table.htbl td:first-child{text-align:left;}
+  table.htbl tr:last-child td{border-bottom:none;}
+  table.htbl td.num{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+
+  .empty{text-align:center;padding:56px 16px;color:var(--mute);font-size:13px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--r);}
+  .loadwrap{display:flex;align-items:center;justify-content:center;height:100vh;color:var(--sub);}
+  .spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--pp);border-radius:50%;animation:sp 1s linear infinite;margin-right:12px;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .sec-title{font-size:13px;font-weight:800;color:var(--sub);margin:6px 2px 10px;}
+
+  /* ===== 単価アイコンのグレー背景（値なし） ===== */
+  .kpi-ic.tn{background:#eef1f4;color:var(--mute);}
+
+  /* ===== 成約プラン内訳（ダッシュボード） ===== */
+  .planrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px;}
+  .planrow span{display:inline-flex;align-items:baseline;gap:5px;background:var(--pp-soft);color:var(--pp2);
+    border-radius:10px;padding:5px 10px;font-size:15px;font-weight:800;}
+  .planrow span i{font-style:normal;font-size:10px;color:var(--sub);font-weight:700;}
+
+  /* ===== ファネルカード（クリエイティブ一覧） ===== */
+  .fm-top{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:2px;}
+  .fm-cell{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:9px 6px;text-align:center;}
+  .fm-cell span{display:block;font-size:9.5px;color:var(--mute);font-weight:600;}
+  .fm-cell b{font-size:14px;font-weight:800;color:var(--ink);}
+  .fm-cell b.j-good{color:var(--green);} .fm-cell b.j-ok{color:var(--amber);} .fm-cell b.j-bad{color:var(--red);} .fm-cell b.j-muted{color:var(--mute);}
+  .fm-stages{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+  .fm-stage{display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:8px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;}
+  .fs-k{font-size:11.5px;font-weight:700;color:var(--sub);}
+  .fs-c{font-size:13px;font-weight:800;color:var(--ink);}
+  .fs-p{font-size:11.5px;font-weight:700;text-align:right;}
+  .fs-p.j-good{color:var(--green);} .fs-p.j-ok{color:var(--amber);} .fs-p.j-bad{color:var(--red);} .fs-p.j-muted{color:var(--mute);}
+  .fm-plan{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;}
+  .fm-plan>span{font-size:10.5px;color:var(--mute);font-weight:700;}
+  .fm-plan em{font-style:normal;font-size:11px;font-weight:700;background:var(--pp-soft);color:var(--pp2);border-radius:999px;padding:3px 10px;}
+
+  /* ===== 課題提出進捗 詳細（クリエイティブカード内アコーディオン） ===== */
+  .pd{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:2px;background:var(--panel2);}
+  .pd-head{width:100%;display:flex;align-items:center;gap:7px;padding:9px 11px;background:transparent;border:none;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s;}
+  .pd-head:hover{background:rgba(0,0,0,.03);}
+  .pd-head.open{border-bottom:1px solid var(--line);}
+  .pd-ic{color:var(--pp2);display:flex;flex-shrink:0;}
+  .pd-title{font-size:12px;font-weight:800;color:var(--ink);}
+  .pd-cnt{font-size:11.5px;font-weight:700;color:var(--mute);}
+  .pd-chev{margin-left:auto;color:var(--mute);display:flex;}
+  .pd-body{padding:10px 11px;display:flex;flex-wrap:wrap;gap:6px;max-height:300px;overflow-y:auto;}
+  .pd-empty{font-size:11.5px;color:var(--mute);padding:2px;}
+  .pchip{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 9px;max-width:100%;}
+  .pname{font-size:11px;font-weight:700;color:var(--ink);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pbadge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid transparent;white-space:nowrap;}
+  .pbadge.pb-close{background:#e5484d;color:#fff;}        /* 成約：赤背景・白文字 */
+  .pbadge.pb-consult{background:#f5d90a;color:#1a1a1a;}   /* 説明会申込：黄背景・黒文字 */
+  .pbadge.pb-grad{background:#f59e0b;color:#1a1a1a;}      /* 卒業LIVE予約後：オレンジ背景・黒文字 */
+  .pbadge.pb-drop{background:#1a1a1a;color:#fff;}         /* 提出後に脱落：黒背景・白文字 */
+  .pbadge.pb-day{background:#ffe0c2;color:#7a3e00;}       /* 提出済み(継続中)：肌色背景・黒文字 */
+  .pbadge.pb-other{background:#eef1f4;color:#5b6675;}
+
+  /* ===== 履歴アコーディオン ===== */
+  .acc{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-card);margin-bottom:12px;overflow:hidden;}
+  .acc-head{width:100%;display:flex;align-items:center;gap:12px;padding:15px 18px;background:transparent;border:none;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s;}
+  .acc-head:hover{background:var(--panel2);}
+  .acc-head.open{border-bottom:1px solid var(--line);}
+  .acc-ic{color:var(--pp2);display:flex;flex-shrink:0;}
+  .acc-title{font-size:14.5px;font-weight:800;color:var(--ink);}
+  .acc-sub{font-size:12px;color:var(--mute);font-weight:600;}
+  .acc-chev{margin-left:auto;color:var(--mute);display:flex;}
+  .htbl td.hkcell{color:var(--blue);font-weight:700;font-family:ui-monospace,monospace;font-size:11.5px;}
+  .hkflex{display:flex;align-items:center;gap:9px;}
+  .thumb{border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--line);}
+  .thumb.ph{display:flex;align-items:center;justify-content:center;background:var(--panel2);color:var(--mute);font-size:10px;}
+  table.htbl td.j-good{color:var(--green);} table.htbl td.j-ok{color:var(--amber);} table.htbl td.j-bad{color:var(--red);} table.htbl td.j-muted{color:var(--mute);}
+  table.htbl{min-width:1560px;}
+  table.htbl td .pill{font-size:10px;padding:3px 8px;}
+
+  /* ===== 営業分析 ===== */
+  .sales-summary{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 18px;}
+  .staff-chip{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow);}
+  .staff-chip .sc-name{font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px;}
+  .staff-chip .sc-name svg{color:var(--pp2);}
+  .staff-chip .sc-stats{display:flex;flex-wrap:wrap;gap:5px 10px;margin-top:6px;font-size:11.5px;}
+  .staff-chip .sc-stats em{font-style:normal;font-weight:700;color:var(--sub);}
+  .staff-chip .sc-stats em.j-good{color:var(--green);} .staff-chip .sc-stats em.j-ok{color:var(--amber);}
+  .staff-chip .sc-stats em.j-bad{color:var(--red);} .staff-chip .sc-stats em.j-muted{color:var(--mute);}
+  .sales-note{font-size:11.5px;color:var(--sub);background:var(--amber-bg);border:1px solid #ecd79a;border-radius:11px;
+    padding:9px 12px;margin:0 0 18px;display:flex;align-items:center;gap:7px;line-height:1.45;}
+  .sales-note svg{color:#a96809;flex-shrink:0;}
+
+  /* 営業カード：成約／検討中／不成約 */
+  .sc-states{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:2px;}
+  .sc-state{border-radius:11px;padding:9px 4px;text-align:center;border:1px solid transparent;}
+  .sc-state .ssk{font-size:9.5px;font-weight:700;}
+  .sc-state .ssv{font-size:17px;font-weight:800;margin-top:2px;}
+  .sc-state.st-close{background:var(--green-bg);border-color:#bce7c8;}
+  .sc-state.st-close .ssk,.sc-state.st-close .ssv{color:#15803d;}
+  .sc-state.st-pending{background:#fdf4dd;border-color:#ecd79a;}
+  .sc-state.st-pending .ssk,.sc-state.st-pending .ssv{color:#a96809;}
+  .sc-state.st-lose{background:#eef1f4;border-color:#d8dde3;}
+  .sc-state.st-lose .ssk,.sc-state.st-lose .ssv{color:#5b6675;}
+  /* 未開催：結果未確定が分かるよう、薄い背景＋点線枠＋淡色 */
+  .sc-state.st-nothd{background:var(--panel2);border-style:dashed;border-color:#d8dde3;}
+  .sc-state.st-nothd .ssk,.sc-state.st-nothd .ssv{color:var(--mute);}
+
+  /* 営業カード：担当者別内訳（アコーディオン内） */
+  .staff-list{display:flex;flex-direction:column;gap:6px;width:100%;}
+  .staff-row{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;}
+  .staff-row .sr-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .staff-row .sr-name{font-size:12px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .staff-row .sr-rate{font-size:11px;font-weight:800;white-space:nowrap;flex-shrink:0;}
+  .staff-row .sr-rate.j-good{color:var(--green);} .staff-row .sr-rate.j-ok{color:var(--amber);}
+  .staff-row .sr-rate.j-bad{color:var(--red);} .staff-row .sr-rate.j-muted{color:var(--mute);}
+  .staff-row .sr-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px;font-size:10.5px;color:var(--sub);}
+  .staff-row .sr-stats em{font-style:normal;font-weight:700;}
+  .staff-row .sr-stats em.j-muted{color:var(--mute);}
+
+  /* ===== レスポンシブ（スマホ：サイドバー→上部） ===== */
+  @media(max-width:860px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:sticky;top:0;border-right:none;border-bottom:1px solid var(--line);z-index:30;}
+    .side-logo{padding:14px 18px;}
+    .side-logo b{font-size:18px;}
+    .side-nav{flex-direction:row;overflow-x:auto;padding:10px 12px;gap:6px;scrollbar-width:none;}
+    .side-nav::-webkit-scrollbar{display:none;}
+    .nav-item{width:auto;flex:0 0 auto;padding:9px 14px;}
+    .nav-item .ni{display:none;}
+    .side-foot{display:none;}
+    .topbar{padding:14px 16px;}
+    .page-title{font-size:18px;}
+    .who .ab-n{display:none;}
+    .content{padding:18px 16px 90px;}
+    .srcbadge{font-size:10.5px;padding:5px 10px;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script src="./vendor/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+/* ============================================================
+   Lucide アイコン（ISCライセンス／インラインSVG・外部CDN非依存）
+   stroke-width 1.75 で全体統一。色は currentColor。
+============================================================ */
+const ICONS = {
+  "layout-dashboard":'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+  "images":'<path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/>',
+  "line-chart":'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',
+  "search":'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  "bell":'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  "flame":'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  "japanese-yen":'<path d="M12 9.5V21m0-11.5L6 3m6 6.5L18 3"/><path d="M6 15h12"/><path d="M6 11h12"/>',
+  "user-plus":'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+  "target":'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  "file-text":'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+  "flag":'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+  "calendar-check":'<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+  "handshake":'<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>',
+  "wallet":'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  "trending-up":'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+  "triangle-alert":'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  "chevron-down":'<path d="m6 9 6 6 6-6"/>',
+  "chevron-up":'<path d="m18 15-6-6-6 6"/>',
+  "book-open":'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  "users":'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  "percent":'<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  "calendar-range":'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/>',
+};
+function Icon({name, size, sw, className, style}){
+  const body = ICONS[name];
+  if(!body) return null;
+  return (
+    <svg className={className} style={style} width={size||20} height={size||20}
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw||1.75}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      dangerouslySetInnerHTML={{__html: body}} />
+  );
+}
+
+/* ============================================================
+   設定：唯一のデータ源（OWNER'S 広告分析 JSON API）
+============================================================ */
+const API = "https://script.google.com/macros/s/AKfycbxalb4uDKF9Tk9wig8S4tXt7O3-nxrDiA12X8qBo-5NCofAwvWAAaCuYR5pmpjQHXOL/exec";
+const URL_SUMMARY = API + "?type=summary";
+const URL_HISTORY = API + "?type=history";
+const URL_RUN     = API + "?type=run"; // updateAll() を手動実行
+const URL_SALES   = API + "?type=sales"; // 営業分析データ
+
+/* ============================================================
+   ダミーデータ（取得失敗時のフォールバック）
+============================================================ */
+const DUMMY_SUMMARY = {
+  ok:true, agency:"渡辺チーム", generatedAt:"2026-06-25T15:00:00+09:00",
+  targets:{cpa:{goal:3000,limit:5000},day1:{goal:15000,limit:25000},finish:{goal:30000,limit:50000},consult:{goal:60000,limit:100000},close:{goal:120000,limit:300000}},
+  planPrice:{Light:490000,Premium:680000,Black:980000},
+  lastUpdated:{daily:"2026-06-25 14:46",weekly:"2026-06-25 14:46",cumulative:"2026-06-25 14:46"},
+  daily:[
+    {period:"2026-06-25〜2026-06-25",status:"配信中",spend:1409,opt:1,cpa:1409,cpaJudge:"✅ 達成",day1:0,finish:0,consult:0,close:0,revenue:0,roas:0,adKey:"lp02-cp2-non-056-31-20",image:""},
+    {period:"2026-06-25〜2026-06-25",status:"配信中",spend:1787,opt:2,cpa:894,cpaJudge:"✅ 達成",day1:1,finish:0,consult:0,close:0,revenue:0,roas:0,adKey:"lp05-cp6-pet-w067-f23-32",image:""},
+  ],
+  weekly:[
+    {period:"2026-06-18〜2026-06-24",status:"配信中",score:"🔥 好調（9/10）",spend:20564,opt:6,cpa:3427,cpaJudge:"⚠️ 許容",day1:3,day1Cpa:6855,finish:0,consult:0,close:0,revenue:0,roas:0,adKey:"lp02-cp2-non-056-31-20",image:""},
+  ],
+  cumulative:[
+    {period:"2025-06-06〜2026-06-24",status:"",score:"🔥 好調（15/15）",spend:120000,opt:60,cpa:2000,cpaJudge:"✅ 達成",day1:8,day1Cpa:15000,finish:4,finishCpa:30000,consult:2,close:1,revenue:430000,roas:3.58,adKey:"lp05-cp6-pet-w067-f23-32",image:""},
+    {period:"2025-06-06〜2026-06-24",status:"",score:"⚠️ 不調（1/15）",spend:48000,opt:8,cpa:6000,cpaJudge:"🚨 限界超過",day1:0,finish:0,consult:0,close:0,revenue:0,roas:0,adKey:"lp02-cp2-non-056-31-20",image:""},
+  ],
+  creatives:[
+    {adKey:"lp05-cp6-pet-w067-f23-32",startDate:"2025-09-03 00:00:00",status:"配信中",title:"ペット好き必見の在宅ワーク",body:"スキマ時間で始められる新しい働き方。未経験から月収UPを目指せます。",target:"",note:"",image:""},
+    {adKey:"lp02-cp2-non-056-31-20",startDate:"2025-08-12 00:00:00",status:"停止中",title:"忙しいママにピッタリのおうちワーク",body:"子育てと両立できる在宅ワーク。スキマ時間から安心して始められます。",target:"",note:"",image:""},
+    {adKey:"lp02-cp2-mamawork-050-35a",startDate:"2025-09-03 00:00:00",status:"配信不可（要確認）",title:"パート以上の収入をおうちで",body:"特別なスキル不要。スマホ1台で始められる無在庫アパレル物販。",target:"",note:"",image:""},
+  ],
+};
+const DUMMY_HISTORY = {
+  ok:true, agency:"渡辺チーム", historyLastUpdated:"2026-06-25 14:46",
+  history:[
+    {period:"2026-06-18〜2026-06-24",status:"配信中",score:"🔥 好調",spend:20564,opt:6,cpa:3427,day1:3,finish:0,consult:0,close:0,revenue:0,roas:0,adKey:"lp02-cp2-non-056-31-20",image:""},
+    {period:"2026-06-18〜2026-06-24",status:"配信中",score:"🔥 好調",spend:25915,opt:9,cpa:2879,day1:4,finish:2,consult:1,close:0,revenue:0,roas:0,adKey:"lp05-cp6-pet-w067-f23-32",image:""},
+  ],
+};
+// 営業データのダミー（取得失敗時のフォールバック。不明1件を含む6件）
+const DUMMY_SALES = {
+  ok:true,
+  sales:{
+    byStaff:[
+      {staff:"横本恭子", applied:17, close:5, pending:2, lose:3, notHeld:7, rate:63, rateNum:"5/8", revenue:2450000},
+      {staff:"田中亮",   applied:11, close:3, pending:1, lose:4, notHeld:3, rate:43, rateNum:"3/7", revenue:1470000},
+      {staff:"佐藤美咲", applied:6,  close:1, pending:0, lose:5, notHeld:0, rate:17, rateNum:"1/6", revenue:490000},
+    ],
+    byCreative:[
+      {adKey:"lp05-cp6-pet-w067-f23-32", applied:9, close:3, pending:1, lose:2, notHeld:3, rate:60, rateNum:"3/5", revenue:1470000,
+        byStaff:[
+          {staff:"横本恭子", applied:6, close:2, pending:1, lose:1, notHeld:2, rate:67, rateNum:"2/3", revenue:980000},
+          {staff:"田中亮",   applied:3, close:1, pending:0, lose:1, notHeld:1, rate:50, rateNum:"1/2", revenue:490000},
+        ]},
+      {adKey:"lp02-cp2-non-056-31-20", applied:7, close:2, pending:1, lose:1, notHeld:3, rate:67, rateNum:"2/3", revenue:980000,
+        byStaff:[
+          {staff:"横本恭子", applied:4, close:1, pending:1, lose:0, notHeld:2, rate:100, rateNum:"1/1", revenue:490000},
+          {staff:"佐藤美咲", applied:3, close:1, pending:0, lose:1, notHeld:1, rate:50, rateNum:"1/2", revenue:490000},
+        ]},
+      {adKey:"lp02-cp2-mamawork-050-35a", applied:5, close:1, pending:0, lose:4, notHeld:0, rate:20, rateNum:"1/5", revenue:490000,
+        byStaff:[
+          {staff:"田中亮", applied:5, close:1, pending:0, lose:4, notHeld:0, rate:20, rateNum:"1/5", revenue:490000},
+        ]},
+      {adKey:"lp07-cp3-side-021-44b", applied:4, close:2, pending:0, lose:1, notHeld:1, rate:67, rateNum:"2/3", revenue:980000,
+        byStaff:[
+          {staff:"横本恭子", applied:4, close:2, pending:0, lose:1, notHeld:1, rate:67, rateNum:"2/3", revenue:980000},
+        ]},
+      {adKey:"lp03-cp1-free-088-12c", applied:3, close:0, pending:1, lose:2, notHeld:0, rate:null, rateNum:"0/2", revenue:0,
+        byStaff:[
+          {staff:"佐藤美咲", applied:3, close:0, pending:1, lose:2, notHeld:0, rate:null, rateNum:"0/2", revenue:0},
+        ]},
+      {adKey:"広告キー不明", applied:14, close:3, pending:2, lose:9, notHeld:0, rate:25, rateNum:"3/12", revenue:1470000, byStaff:[]},
+    ],
+    unknownCount:14,
+  },
+};
+
+/* ============================================================
+   JSONP 取得（GASはCORS非対応のため <script> で取得）
+============================================================ */
+let _jsonpSeq = 0;
+function jsonp(url, ms){
+  return new Promise((resolve, reject)=>{
+    const cb = "__owners_jsonp_" + (++_jsonpSeq);
+    const sep = url.indexOf("?") >= 0 ? "&" : "?";
+    const script = document.createElement("script");
+    let done = false;
+    const cleanup = ()=>{
+      try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+      if(script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timer);
+    };
+    const timer = setTimeout(()=>{
+      if(done) return; done = true; cleanup();
+      reject(new Error("タイムアウト（JSONP応答なし）"));
+    }, ms || 28000);
+    window[cb] = (data)=>{ if(done) return; done = true; cleanup(); resolve(data); };
+    script.onerror = ()=>{ if(done) return; done = true; cleanup(); reject(new Error("スクリプト読み込みエラー")); };
+    script.src = url + sep + "callback=" + cb;
+    document.head.appendChild(script);
+  });
+}
+// summaryは約480KB/10秒かかるためリトライ付き
+async function jsonpRetry(url, tries, ms){
+  let last;
+  for(let i=0;i<(tries||1);i++){
+    try{ return await jsonp(url, ms); }catch(e){ last=e; }
+  }
+  throw last;
+}
+
+/* ============================================================
+   整形ユーティリティ
+============================================================ */
+const isNum = (v)=> v!=="" && v!=null && !isNaN(Number(v));
+const N = (v)=> isNum(v) ? Number(v) : null;
+const comma = (v)=> isNum(v) ? Math.round(Number(v)).toLocaleString("ja-JP") : "-";
+const yen = (v)=> isNum(v) ? "¥"+Math.round(Number(v)).toLocaleString("ja-JP") : "-";
+const yen0 = (v)=> isNum(v) ? "¥"+Math.round(Number(v)).toLocaleString("ja-JP") : "¥0";
+const roasFmt = (v)=> isNum(v) ? (Math.round(Number(v)*100)/100).toLocaleString("ja-JP")+"x" : "-";
+const pctFmt = (v)=> isNum(v) ? (Math.round(Number(v)*1000)/10)+"%" : "-";
+
+function costClass(v, t){
+  if(!isNum(v) || !t) return "";
+  v=Number(v);
+  if(v<=t.goal) return "j-good";
+  if(v<=t.limit) return "j-ok";
+  return "j-bad";
+}
+function ratingFromText(s){
+  s = String(s||"");
+  if(s.indexOf("🔥")>=0 || s.indexOf("好調")>=0) return {emo:"🔥", lab:"好調", cls:"good"};
+  if(s.indexOf("⚠️")>=0 || s.indexOf("不調")>=0) return {emo:"⚠️", lab:"不調", cls:"bad"};
+  if(s.indexOf("➡️")>=0 || s.indexOf("普通")>=0) return {emo:"➡️", lab:"普通", cls:"mid"};
+  return null;
+}
+// バックエンド由来スコア文字列の絵文字を線画トーンの記号に統一
+function formatScore(s){
+  return String(s||"")
+    .replace(/🔥/g,"").replace(/➡️/g,"").replace(/⚠️/g,"△")
+    .replace(/✅/g,"◎").replace(/🚨/g,"✕")
+    .replace(/^[\s　]*[△◎✕]?\s*/, m=> /[△◎✕]/.test(m)? m.trim()+" " : "")
+    .trim();
+}
+function scoreIcon(cls){ return cls==="bad"?"triangle-alert":cls==="mid"?"trending-up":"flame"; }
+function statusInfo(st){
+  st = String(st||"");
+  if(st.indexOf("配信不可")>=0 || st.indexOf("不可")>=0) return {cls:"ng", card:"s-ng", label:st||"配信不可"};
+  if(st.indexOf("停止")>=0) return {cls:"off", card:"s-off", label:st||"停止中"};
+  if(st.indexOf("配信中")>=0) return {cls:"on", card:"s-on", label:"配信中"};
+  return {cls:"off", card:"s-off", label: st||"未設定"};
+}
+
+/* ファネル各段階（件数キー・単価キー・目標キー） */
+const STAGES = [
+  {key:"day1",    label:"Day1",   cpa:"day1Cpa",    tgt:"day1"},
+  {key:"finish",  label:"完走",   cpa:"finishCpa",  tgt:"finish"},
+  {key:"consult", label:"説明会", cpa:"consultCpa", tgt:"consult"},
+  {key:"close",   label:"成約",   cpa:"closeCpa",   tgt:"close"},
+];
+// ROAS：比率→% （roas×100 四捨五入）。値なしは「—」
+const roasPct = (v)=> isNum(v) ? Math.round(Number(v)*100)+"%" : "—";
+// ROASの色：日次=グレー / 7日間・累計=100%以上緑・未満赤
+function roasCls(v, isDaily){
+  if(isDaily) return "j-muted";
+  if(!isNum(v)) return "j-muted";
+  return Number(v)>=1 ? "j-good" : "j-bad";
+}
+// 単価：値あり(>0)は目標/限界で色分け、値なし(0/空)はグレー
+function priceCls(v, t){ return (isNum(v) && Number(v)>0) ? costClass(v,t) : "j-muted"; }
+function priceVal(v){ return (isNum(v) && Number(v)>0) ? yen(v) : "—"; }
+// 判定クラス → 円形アイコンの淡色背景クラス
+function clsTint(cls){ return cls==="j-good"?"tg":cls==="j-ok"?"ta":cls==="j-bad"?"tr":"tn"; }
+// プラン別成約数キーがデータにあるか
+function planAvailable(row){ return row.lightClose!=null || row.premiumClose!=null || row.blackClose!=null; }
+function planCount(v, avail){ return avail ? comma(v) : "—"; }
+// 件数（値なしは「—」）
+function cntDash(v){ return isNum(v) ? comma(v) : "—"; }
+// 成約率：集計した比率(数値)を%表示。null/空は「—」。390%等の異常値もそのまま
+function ratePct(v){ return (v==null || v==="") ? "—" : Math.round(Number(v)*100)+"%"; }
+// JSON行の成約率文字列（例 "33.3%" / ""）をそのまま表示。空は「—」
+function rateStr(v){ const s=(v==null)?"":String(v).trim(); return s==="" ? "—" : s; }
+// 営業：成約率（数値%）→ 「67%（5/8）」。null は「—」
+function salesRate(rate, rateNum){
+  if(rate==null || rate==="") return "—";
+  const base = Math.round(Number(rate))+"%";
+  return rateNum ? base+"（"+rateNum+"）" : base;
+}
+// 営業：成約率の色分け（高=緑 / 中=黄 / 低=赤 / 値なし=グレー）
+function salesRateCls(rate){
+  if(rate==null || rate==="") return "j-muted";
+  const v=Number(rate);
+  if(v>=50) return "j-good";
+  if(v>=25) return "j-ok";
+  return "j-bad";
+}
+// 広告キー不明（空 or「不明」を含む）→ クリエイティブ別カードから除外
+function isUnknownAdKey(k){ const s=String(k||"").trim(); return s==="" || s.indexOf("不明")>=0; }
+// 総売上 = OWNER'S(revenue) + セルフ + サロン
+function totalRevenueOf(row){ return (N(row.revenue)||0)+(N(row.selfstudyRevenue)||0)+(N(row.salonRevenue)||0); }
+// 旧プラン成約数 = 成約 − Light − Premium − Black（JSONに専用キーが無いため引き算。負にしない）
+function legacyCloseOf(row){ return Math.max(0, (N(row.close)||0) - (N(row.lightClose)||0) - (N(row.premiumClose)||0) - (N(row.blackClose)||0)); }
+
+/* ===== 並び替え用キー（無効値は必ず末尾へ） ===== */
+// 単価/CPA：>0 の数値のみ有効。0・空・未計測は null（末尾扱い）
+function priceKey(v){ return (isNum(v) && Number(v)>0) ? Number(v) : null; }
+// スコア：文字列「…（X/Y）…」から達成率 X/Y（0〜1, 高いほど好調）。取れなければ null
+function scoreKey(s){
+  const m = String(s||"").match(/[（(]\s*(\d+)\s*\/\s*(\d+)\s*[）)]/);
+  if(!m) return null;
+  const num=Number(m[1]), den=Number(m[2]);
+  return den>0 ? num/den : null;
+}
+// 無効値(null)を必ず末尾に固定する比較。dir:"asc"=小さいほど上 / "desc"=大きいほど上
+function cmpInvalidLast(av, bv, dir){
+  const aOk=av!=null, bOk=bv!=null;
+  if(!aOk && !bOk) return 0;
+  if(!aOk) return 1;   // a を後ろへ
+  if(!bOk) return -1;  // b を後ろへ
+  return dir==="asc" ? (av-bv) : (bv-av);
+}
+const PRICE_SORTS = ["cpa","day1Cpa","finishCpa","consultCpa","closeCpa"];
+
+// 履歴/カード共通：キービジュアルのサムネイル（期限切れ等は「画像なし」）
+function Thumb({src, size}){
+  const [err,setErr]=useState(false);
+  const s=size||36;
+  if(!src || err) return <div className="thumb ph" style={{width:s,height:s}}>無</div>;
+  return <img className="thumb" style={{width:s,height:s}} src={src} alt=""
+    referrerPolicy="no-referrer" loading="lazy" onError={()=>setErr(true)} />;
+}
+
+/* ============================================================
+   集計（ダッシュボード総合評価）
+============================================================ */
+function aggregate(rows, targets){
+  const sum = (k)=> rows.reduce((a,r)=> a + (N(r[k])||0), 0);
+  const spend=sum("spend"), opt=sum("opt"), day1=sum("day1"),
+        finish=sum("finish"), consult=sum("consult"), close=sum("close");
+  const light=sum("lightClose"), premium=sum("premiumClose"), black=sum("blackClose");
+  const selfClose=sum("selfstudyClose"), salonClose=sum("salonClose");
+  const revenueOwners=sum("revenue");                                  // OWNER'Sプラン合計
+  const selfRev=sum("selfstudyRevenue"), salonRev=sum("salonRevenue");
+  const revenue=revenueOwners+selfRev+salonRev;                        // 総売上
+  const planAvail = rows.some(planAvailable);
+  const cpa = opt>0 ? spend/opt : null;
+  const day1Cpa = day1>0 ? spend/day1 : null;
+  const finishCpa = finish>0 ? spend/finish : null;
+  const consultCpa = consult>0 ? spend/consult : null;
+  const closeCpa = close>0 ? spend/close : null;
+  const roas = spend>0 ? revenue/spend : null;                         // 総売上ベース
+  // ダウンセル成約率（分母0以下は null＝「—」）。390%等の異常値はそのまま
+  const ownersRate = consult>0 ? close/consult : null;
+  const selfDenom = consult-close;
+  const selfRate = selfDenom>0 ? selfClose/selfDenom : null;
+  const salonDenom = consult-close-selfClose;
+  const salonRate = salonDenom>0 ? salonClose/salonDenom : null;
+  const checks=[[cpa,targets.cpa],[day1Cpa,targets.day1],[finishCpa,targets.finish]];
+  let got=0, max=0;
+  checks.forEach(([v,t])=>{ if(v==null||!t) return; max+=2; if(v<=t.goal) got+=2; else if(v<=t.limit) got+=1; });
+  let verdict;
+  if(max===0) verdict={emo:"➡️",lab:"データ不足",cls:"mid",note:"集計対象の数値がまだありません"};
+  else{
+    const r=got/max;
+    if(r>=0.7) verdict={emo:"🔥",lab:"好調",cls:"good",note:"主要指標が目標を達成しています"};
+    else if(r>=0.4) verdict={emo:"➡️",lab:"普通",cls:"mid",note:"一部指標が許容範囲内です"};
+    else verdict={emo:"⚠️",lab:"不調",cls:"bad",note:"主要指標が目標を下回っています"};
+  }
+  return {spend,opt,day1,finish,consult,close,revenue,revenueOwners,
+    selfClose,salonClose,selfRev,salonRev,
+    cpa,day1Cpa,finishCpa,consultCpa,closeCpa,roas,
+    ownersRate,selfRate,salonRate,
+    light,premium,black,planAvail,count:rows.length,verdict};
+}
+
+function KV({src, alt}){
+  const [err,setErr]=useState(false);
+  if(!src || err) return <div className="kv ph">画像なし</div>;
+  return <img className="kv" src={src} alt={alt||""} loading="lazy" referrerPolicy="no-referrer" onError={()=>setErr(true)} />;
+}
+
+/* ============================================================
+   ① ダッシュボード
+============================================================ */
+function Dashboard({data}){
+  const [period,setPeriod]=useState("daily");
+  const labels={daily:"日次",weekly:"7日間",cumulative:"累計"};
+  const rows = data[period]||[];
+  const targets = data.targets||{};
+  const ag = useMemo(()=>aggregate(rows,targets),[rows,targets]);
+  const lu = (data.lastUpdated||{})[period];
+  const isDaily = period==="daily";
+  const lagNote = "※成約はオプトの数日後に反映";
+
+  const cpaCls = costClass(ag.cpa, targets.cpa);
+  const cpaBadge = ag.cpa==null ? null
+    : cpaCls==="j-good" ? {label:"達成",cls:"b-good"}
+    : cpaCls==="j-ok" ? {label:"許容",cls:"b-ok"}
+    : {label:"超過",cls:"b-bad"};
+  const cpaTint = cpaCls==="j-good"?"tg":cpaCls==="j-ok"?"ta":cpaCls==="j-bad"?"tr":"tp";
+
+  const T = targets;
+  const noteTgt = (t)=> t ? ("目標 "+yen(t.goal)+" / 限界 "+yen(t.limit)) : "";
+  const priceCard = (k, v, t)=>{
+    const cls = priceCls(v, t);
+    return {k, v:priceVal(v), icon:"japanese-yen", tint:clsTint(cls), cls, sub:noteTgt(t), price:true};
+  };
+  const roasC = roasCls(ag.roas, isDaily);
+
+  const cards=[
+    {k:"消化金額", v:yen0(ag.spend), icon:"japanese-yen", tint:"tp"},
+    {k:"オプト数", v:comma(ag.opt), icon:"user-plus", tint:"tp"},
+    {k:"CPA", v:yen(ag.cpa), icon:"target", tint:cpaTint, cls:cpaCls, sub:noteTgt(T.cpa), badge:cpaBadge},
+    {k:"Day1提出数", v:comma(ag.day1), icon:"file-text", tint:"tp"},
+    priceCard("Day1単価", ag.day1Cpa, T.day1),
+    {k:"完走数", v:comma(ag.finish), icon:"flag", tint:"tp"},
+    priceCard("完走単価", ag.finishCpa, T.finish),
+    {k:"説明会申込数", v:comma(ag.consult), icon:"calendar-check", tint:"tp"},
+    priceCard("説明会申込単価", ag.consultCpa, T.consult),
+    {k:"成約数(OWNER'S)", v:comma(ag.close), icon:"handshake", tint:"tp", note: isDaily?lagNote:""},
+    Object.assign(priceCard("成約単価", ag.closeCpa, T.close), {note: isDaily?lagNote:""}),
+    {plan:true, k:"成約プラン内訳", icon:"handshake", tint:"tp",
+      pl:ag.light, pp:ag.premium, pb:ag.black, avail:ag.planAvail,
+      pleg: Math.max(0, ag.close-ag.light-ag.premium-ag.black),
+      sub: ag.planAvail ? "" : "※API未提供のため「—」", note: isDaily?lagNote:""},
+    {k:"セルフスタディ成約数", v:comma(ag.selfClose), icon:"book-open", tint:"tp", sub:"@¥148,000/件", note: isDaily?lagNote:""},
+    {k:"サロン成約数", v:comma(ag.salonClose), icon:"users", tint:"tp", sub:"@¥30,000/件", note: isDaily?lagNote:""},
+    {rates:true, k:"ダウンセル成約率", icon:"percent", tint:"tp",
+      ro:ag.ownersRate, rs:ag.selfRate, rl:ag.salonRate},
+    {k:"成約売上(総売上)", v:yen0(ag.revenue), icon:"wallet", tint:"tp", sub:"OWNER'S＋セルフ＋サロン", note: isDaily?lagNote:""},
+    {k:"ROAS", v:roasPct(ag.roas), icon:"trending-up", tint:clsTint(roasC), cls:roasC, sub:"総売上÷消化", note: isDaily?lagNote:""},
+  ];
+
+  return (
+    <div>
+      <div className="row-controls">
+        <div className="seg">
+          {["daily","weekly","cumulative"].map(p=>(
+            <button key={p} className={period===p?"active":""} onClick={()=>setPeriod(p)}>{labels[p]}</button>
+          ))}
+        </div>
+        <span className="count">{ag.count}件のファネルを集計</span>
+      </div>
+
+      <div className={"verdict "+ag.verdict.cls}>
+        <div className="verdict-ic"><Icon name="flame" size={34} sw={1.75} /></div>
+        <div>
+          <div className="lab">総合評価：{ag.verdict.lab}</div>
+          <div className="note">{ag.verdict.note}（{labels[period]}）</div>
+        </div>
+      </div>
+
+      <div className="cards">
+        {cards.map((c,i)=>(
+          <div className="kpi" key={i}>
+            <div className={"kpi-ic "+(c.tint||"tp")}><Icon name={c.icon} size={23} /></div>
+            <div className="kpi-body">
+              <div className="kpi-k">{c.k}</div>
+              {c.plan? (
+                <div className="planrow">
+                  <span><i>Light</i>{planCount(c.pl,c.avail)}</span>
+                  <span><i>Premium</i>{planCount(c.pp,c.avail)}</span>
+                  <span><i>Black</i>{planCount(c.pb,c.avail)}</span>
+                  <span><i>旧プラン</i>{comma(c.pleg)}</span>
+                </div>
+              ): c.rates? (
+                <div className="planrow">
+                  <span><i>OWNER'S</i>{ratePct(c.ro)}</span>
+                  <span><i>セルフ</i>{ratePct(c.rs)}</span>
+                  <span><i>サロン</i>{ratePct(c.rl)}</span>
+                </div>
+              ):(
+                <div className={"kpi-v "+(c.cls||"")+((c.v||"").length>9?" sm":"")}>{c.v}</div>
+              )}
+              {c.sub? <div className="kpi-sub">{c.sub}</div>:null}
+              {c.note? <div className="note2">{c.note}</div>:null}
+            </div>
+            {c.badge? <span className={"kbadge "+c.badge.cls}>{c.badge.label}</span>:null}
+          </div>
+        ))}
+      </div>
+      {lu? <div className="meta-line" style={{marginTop:"16px"}}>最終更新：{lu}</div>:null}
+    </div>
+  );
+}
+
+/* ============================================================
+   ② クリエイティブ一覧（creatives × cumulative をマージ）
+============================================================ */
+function metricMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{
+    const k=r.adKey; if(!k) return;
+    const t=m[k]||(m[k]={spend:0,opt:0,day1:0,finish:0,consult:0,close:0,revenue:0,score:""});
+    t.spend+=N(r.spend)||0; t.opt+=N(r.opt)||0; t.day1+=N(r.day1)||0;
+    t.finish+=N(r.finish)||0; t.consult+=N(r.consult)||0; t.close+=N(r.close)||0;
+    t.revenue+=N(r.revenue)||0;
+    if(!t.score && r.score && r.score!=="-") t.score=r.score;
+  });
+  return m;
+}
+function statusRank(s){ const i=statusInfo(s); return i.cls==="on"?0:i.cls==="off"?1:2; }
+
+function CreativeCard({c, mt}){
+  const si=statusInfo(c.status);
+  const cpa = mt && mt.opt>0 ? mt.spend/mt.opt : null;
+  const rating = mt ? ratingFromText(mt.score) : null;
+  return (
+    <div className={"cc "+si.card}>
+      <KV src={c.image} alt={c.adKey} />
+      <div className="body">
+        <span className={"pill "+si.cls}>{si.label}</span>
+        <div className="ck">{c.adKey}</div>
+        {c.title? <div className="ctitle">{c.title}</div>:null}
+        {mt? (
+          <div className="mini">
+            <div className="m"><div className="mk">消化</div><div className="mv">{yen0(mt.spend)}</div></div>
+            <div className="m"><div className="mk">オプト</div><div className="mv">{comma(mt.opt)}</div></div>
+            <div className="m"><div className="mk">CPA</div><div className="mv">{yen(cpa)}</div></div>
+            <div className="m"><div className="mk">Day1</div><div className="mv">{comma(mt.day1)}</div></div>
+            <div className="m"><div className="mk">完走</div><div className="mv">{comma(mt.finish)}</div></div>
+            <div className="m"><div className="mk">成約</div><div className="mv">{comma(mt.close)}</div></div>
+          </div>
+        ):<div className="ctext">累計実績データなし</div>}
+        {rating? (
+          <div className={"scoreline sc-"+rating.cls}>
+            <span className="sc-ic"><Icon name={scoreIcon(rating.cls)} size={14} /></span>
+            <span className="sc-tx">{formatScore(mt.score)}</span>
+          </div>
+        ):null}
+        {c.body? <div className="ctext ctext-body">{c.body}</div>:null}
+      </div>
+    </div>
+  );
+}
+
+/* ====== 課題提出進捗 詳細（クリエイティブカード内アコーディオン） ====== */
+// stage文字列 → バッジ用クラス。「脱落」を最優先で判定（"Day○提出後に脱落"対策）。
+function stageBadgeCls(stage){
+  const s=String(stage||"");
+  if(s.indexOf("脱落")>=0)   return "pb-drop";     // 黒背景・白文字
+  if(s.indexOf("成約")>=0)   return "pb-close";    // 赤背景・白文字
+  if(s.indexOf("説明会")>=0) return "pb-consult";  // 黄背景・黒文字
+  if(s.indexOf("卒業")>=0)   return "pb-grad";     // オレンジ背景・黒文字
+  if(s.indexOf("提出済み")>=0) return "pb-day";    // 肌色背景・黒文字（継続中）
+  return "pb-other";
+}
+const PB_RANK={"pb-close":0,"pb-consult":1,"pb-grad":2,"pb-drop":3,"pb-day":4,"pb-other":5};
+// 各カードに表示する課題提出者リスト（現在の期間に連動）。デフォルト閉。
+function ProgressDetail({items}){
+  const [open,setOpen]=useState(false);
+  const list=items||[];
+  // 段階ごとにクラスタリング（成約→説明会→卒業→脱落→提出済み→その他）。同段階内は元の順を維持。
+  const sorted=useMemo(()=>list
+    .map((p,i)=>({p,i,r:PB_RANK[stageBadgeCls(p.stage)]}))
+    .sort((a,b)=> a.r!==b.r ? a.r-b.r : a.i-b.i)
+    .map(x=>x.p), [list]);
+  return (
+    <div className="pd">
+      <button className={"pd-head"+(open?" open":"")} onClick={()=>setOpen(o=>!o)}>
+        <span className="pd-ic"><Icon name="users" size={14} /></span>
+        <span className="pd-title">課題提出進捗 詳細</span>
+        <span className="pd-cnt">（{list.length}名）</span>
+        <span className="pd-chev"><Icon name={open?"chevron-up":"chevron-down"} size={16} /></span>
+      </button>
+      {open? (
+        <div className="pd-body">
+          {sorted.length? sorted.map((p,i)=>(
+            <span className="pchip" key={i}>
+              <span className="pname" title={p.name}>{p.name||"(名前なし)"}</span>
+              <span className={"pbadge "+stageBadgeCls(p.stage)}>{p.stage}</span>
+            </span>
+          )) : <div className="pd-empty">この期間の課題提出者はいません</div>}
+        </div>
+      ):null}
+    </div>
+  );
+}
+
+// 期間配列の1行（クリエイティブ）を全指標＋単価で表示
+function FunnelCard({row, meta, targets, isDaily, period}){
+  const si=statusInfo(row.status);
+  const img = row.image || (meta&&meta.image) || "";
+  const rating = ratingFromText(row.score);
+  const cpaC = costClass(N(row.cpa), targets.cpa);
+  const avail = planAvailable(row);
+  return (
+    <div className={"cc "+si.card}>
+      <KV src={img} alt={row.adKey} />
+      <div className="body">
+        <span className={"pill "+si.cls}>{si.label}</span>
+        <div className="ck">{row.adKey}</div>
+        {meta&&meta.title? <div className="ctitle">{meta.title}</div>:null}
+
+        <div className="fm-top">
+          <div className="fm-cell"><span>消化金額</span><b>{yen0(row.spend)}</b></div>
+          <div className="fm-cell"><span>オプト数</span><b>{comma(row.opt)}</b></div>
+          <div className="fm-cell"><span>CPA</span><b className={cpaC}>{yen(row.cpa)}</b></div>
+        </div>
+
+        <div className="fm-stages">
+          {STAGES.map(s=>{
+            const pv=N(row[s.cpa]); const pc=priceCls(pv,targets[s.tgt]);
+            return (
+              <div className="fm-stage" key={s.key}>
+                <span className="fs-k">{s.label}</span>
+                <span className="fs-c">{comma(row[s.key])}件</span>
+                <span className={"fs-p "+pc}>単価 {priceVal(pv)}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="fm-plan">
+          <span>成約内訳</span>
+          <em>Light {planCount(N(row.lightClose),avail)}</em>
+          <em>Premium {planCount(N(row.premiumClose),avail)}</em>
+          <em>Black {planCount(N(row.blackClose),avail)}</em>
+          <em>旧プラン {comma(legacyCloseOf(row))}</em>
+          <em>セルフ {cntDash(N(row.selfstudyClose))}</em>
+          <em>サロン {cntDash(N(row.salonClose))}</em>
+        </div>
+
+        <div className="fm-plan">
+          <span>成約率</span>
+          <em>OWNER'S {rateStr(row.ownersCloseRate)}</em>
+          <em>セルフ {rateStr(row.selfstudyCloseRate)}</em>
+          <em>サロン {rateStr(row.salonCloseRate)}</em>
+        </div>
+
+        <div className="fm-top" style={{gridTemplateColumns:"repeat(2,1fr)"}}>
+          <div className="fm-cell"><span>成約売上(総売上)</span><b>{yen0(totalRevenueOf(row))}</b></div>
+          <div className="fm-cell"><span>ROAS</span><b className={roasCls(row.roas,isDaily)}>{roasPct(row.roas)}</b></div>
+        </div>
+        {isDaily? <div className="note2">※成約はオプトの数日後に反映</div>:null}
+
+        <ProgressDetail items={(meta && meta.progressDetail && meta.progressDetail[period]) || []} />
+
+        {rating? (
+          <div className={"scoreline sc-"+rating.cls}>
+            <span className="sc-ic"><Icon name={scoreIcon(rating.cls)} size={14} /></span>
+            <span className="sc-tx">{formatScore(row.score)}</span>
+          </div>
+        ):null}
+        {meta&&meta.body? <div className="ctext ctext-body">{meta.body}</div>:null}
+      </div>
+    </div>
+  );
+}
+
+function Creatives({data}){
+  const [period,setPeriod]=useState("cumulative");
+  const [filter,setFilter]=useState("all");
+  const [sort,setSort]=useState("status");
+  const labels={daily:"日次",weekly:"7日間",cumulative:"累計"};
+  const rows = data[period]||[];
+  const targets = data.targets||{};
+  const isDaily = period==="daily";
+  const metaMap = useMemo(()=>{ const m={}; (data.creatives||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[data.creatives]);
+  const enriched = useMemo(()=> rows.map(r=>{
+    const meta=metaMap[r.adKey]||{};
+    return { row:Object.assign({}, r, {status: r.status || meta.status || ""}), meta };
+  }),[rows,metaMap]);
+  const view = useMemo(()=>{
+    let v=enriched.filter(x=> filter==="all" ? true : statusInfo(x.row.status).cls===filter);
+    v=[...v];
+    if(sort==="status") v.sort((a,b)=>statusRank(a.row.status)-statusRank(b.row.status));
+    else if(sort==="spend") v.sort((a,b)=>(N(b.row.spend)||0)-(N(a.row.spend)||0));
+    else if(sort==="date") v.sort((a,b)=>String((b.meta||{}).startDate||"").localeCompare(String((a.meta||{}).startDate||"")));
+    else if(sort==="score") v.sort((a,b)=>cmpInvalidLast(scoreKey(a.row.score), scoreKey(b.row.score), "desc"));
+    else if(PRICE_SORTS.indexOf(sort)>=0) v.sort((a,b)=>cmpInvalidLast(priceKey(a.row[sort]), priceKey(b.row[sort]), "asc"));
+    return v;
+  },[enriched,filter,sort]);
+
+  return (
+    <div>
+      <div className="row-controls">
+        <div className="seg">
+          {["daily","weekly","cumulative"].map(p=>(
+            <button key={p} className={period===p?"active":""} onClick={()=>setPeriod(p)}>{labels[p]}</button>
+          ))}
+        </div>
+        <select value={filter} onChange={e=>setFilter(e.target.value)}>
+          <option value="all">全ステータス</option>
+          <option value="on">配信中</option>
+          <option value="off">停止中</option>
+          <option value="ng">配信不可</option>
+        </select>
+        <select value={sort} onChange={e=>setSort(e.target.value)}>
+          <option value="status">並替：ステータス順</option>
+          <option value="spend">並替：消化金額が多い順</option>
+          <option value="date">並替：開始日が新しい順</option>
+          <option value="score">並替：スコアが高い順</option>
+          <option value="cpa">並替：CPAが安い順</option>
+          <option value="day1Cpa">並替：Day1単価が安い順</option>
+          <option value="finishCpa">並替：完走単価が安い順</option>
+          <option value="consultCpa">並替：説明会申込単価が安い順</option>
+          <option value="closeCpa">並替：成約単価が安い順</option>
+        </select>
+        <span className="count">{view.length}件（{labels[period]}）</span>
+      </div>
+      {view.length? (
+        <div className="cgrid">
+          {view.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} />)}
+        </div>
+      ):<div className="empty">該当するクリエイティブはありません</div>}
+    </div>
+  );
+}
+
+/* ============================================================
+   ③ 7日間履歴（期間アコーディオン・グラフなし）
+============================================================ */
+function Accordion({title, sub, defaultOpen, children}){
+  const [open,setOpen]=useState(!!defaultOpen);
+  return (
+    <div className="acc">
+      <button className={"acc-head"+(open?" open":"")} onClick={()=>setOpen(o=>!o)}>
+        <span className="acc-ic"><Icon name="calendar-range" size={17} /></span>
+        <span className="acc-title">{title}</span>
+        <span className="acc-sub">{sub}</span>
+        <span className="acc-chev"><Icon name={open?"chevron-up":"chevron-down"} size={18} /></span>
+      </button>
+      {open? <div className="acc-body">{children}</div>:null}
+    </div>
+  );
+}
+
+function History({history, summary}){
+  const rows = history.history||[];
+  const targets = (summary && summary.targets) || {};
+  const metaMap = useMemo(()=>{ const m={}; ((summary&&summary.creatives)||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[summary]);
+  // period（新しい順）でグループ化
+  const periods = useMemo(()=>{
+    const by={};
+    rows.forEach(r=>{ (by[r.period]||(by[r.period]=[])).push(r); });
+    return Object.keys(by).sort((a,b)=>String(b).localeCompare(String(a)))
+      .map(p=>({period:p, rows:by[p]}));
+  },[rows]);
+
+  if(!rows.length) return <div className="empty">履歴データがありません</div>;
+
+  return (
+    <div>
+      <div className="meta-line">期間別の週次推移（{periods.length}期間 / {history.historyLastUpdated||"-"} 時点）。タブを開くと、その期間のクリエイティブ別の数字が一覧で表示されます。</div>
+      {periods.map((g,gi)=>(
+        <Accordion key={g.period} title={g.period} sub={g.rows.length+" クリエイティブ"} defaultOpen={false}>
+          <div className="htbl-wrap">
+            <table className="htbl">
+              <thead>
+                <tr>
+                  <th>クリエイティブ</th><th>状態</th><th>消化金額</th><th>オプト</th><th>CPA</th>
+                  <th>Day1</th><th>Day1単価</th><th>完走</th><th>完走単価</th>
+                  <th>説明会</th><th>説申単価</th><th>成約</th><th>成約単価</th>
+                  <th>Light</th><th>Prem</th><th>Black</th><th>セルフ</th><th>サロン</th>
+                  <th>OWNER'S率</th><th>セルフ率</th><th>サロン率</th>
+                  <th>成約売上(総)</th><th>ROAS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.rows.map((r,i)=>{
+                  const meta=metaMap[r.adKey]||{};
+                  const si=statusInfo(r.status || meta.status || "");
+                  const avail=planAvailable(r);
+                  return (
+                    <tr key={i}>
+                      <td className="hkcell"><div className="hkflex"><Thumb src={r.image || meta.image} size={36} /><span>{r.adKey}</span></div></td>
+                      <td><span className={"pill "+si.cls}>{si.label}</span></td>
+                      <td className="num">{yen0(r.spend)}</td>
+                      <td className="num">{comma(r.opt)}</td>
+                      <td className={"num "+costClass(N(r.cpa),targets.cpa)}>{yen(r.cpa)}</td>
+                      <td className="num">{comma(r.day1)}</td>
+                      <td className={"num "+priceCls(N(r.day1Cpa),targets.day1)}>{priceVal(N(r.day1Cpa))}</td>
+                      <td className="num">{comma(r.finish)}</td>
+                      <td className={"num "+priceCls(N(r.finishCpa),targets.finish)}>{priceVal(N(r.finishCpa))}</td>
+                      <td className="num">{comma(r.consult)}</td>
+                      <td className={"num "+priceCls(N(r.consultCpa),targets.consult)}>{priceVal(N(r.consultCpa))}</td>
+                      <td className="num">{comma(r.close)}</td>
+                      <td className={"num "+priceCls(N(r.closeCpa),targets.close)}>{priceVal(N(r.closeCpa))}</td>
+                      <td className="num">{planCount(N(r.lightClose),avail)}</td>
+                      <td className="num">{planCount(N(r.premiumClose),avail)}</td>
+                      <td className="num">{planCount(N(r.blackClose),avail)}</td>
+                      <td className="num">{cntDash(N(r.selfstudyClose))}</td>
+                      <td className="num">{cntDash(N(r.salonClose))}</td>
+                      <td className="num">{rateStr(r.ownersCloseRate)}</td>
+                      <td className="num">{rateStr(r.selfstudyCloseRate)}</td>
+                      <td className="num">{rateStr(r.salonCloseRate)}</td>
+                      <td className="num">{yen0(totalRevenueOf(r))}</td>
+                      <td className={"num "+roasCls(r.roas,false)}>{roasPct(r.roas)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Accordion>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   ④ 検索
+============================================================ */
+function Search({data}){
+  const [q,setQ]=useState("");
+  const [status,setStatus]=useState("all");
+  const [target,setTarget]=useState("all");
+  const list=data.creatives||[];
+  const mt=useMemo(()=>metricMap(data.cumulative),[data.cumulative]);
+  const targets=useMemo(()=>{
+    const s=new Set();
+    list.forEach(c=>{ if(c.target) s.add(c.target); });
+    return Array.from(s);
+  },[list]);
+  const view=useMemo(()=>{
+    const kw=q.trim().toLowerCase();
+    return list.filter(c=>{
+      if(status!=="all" && statusInfo(c.status).cls!==status) return false;
+      if(target!=="all" && (c.target||"")!==target) return false;
+      if(kw){
+        const hay=((c.adKey||"")+" "+(c.title||"")+" "+(c.body||"")).toLowerCase();
+        if(hay.indexOf(kw)<0) return false;
+      }
+      return true;
+    });
+  },[list,q,status,target]);
+
+  return (
+    <div>
+      <div className="row-controls">
+        <div className="grow" style={{minWidth:"200px"}}>
+          <input type="text" placeholder="広告キー・タイトル・本文で検索…" value={q} onChange={e=>setQ(e.target.value)} />
+        </div>
+        <select value={status} onChange={e=>setStatus(e.target.value)}>
+          <option value="all">全ステータス</option>
+          <option value="on">配信中</option>
+          <option value="off">停止中</option>
+          <option value="ng">配信不可</option>
+        </select>
+        <select value={target} onChange={e=>setTarget(e.target.value)}>
+          <option value="all">全ターゲット</option>
+          {targets.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="meta-line">{view.length} 件ヒット{q?("（キーワード：「"+q+"」）"):""}</div>
+      {view.length? (
+        <div className="cgrid">
+          {view.map((c,i)=><CreativeCard key={c.adKey+i} c={c} mt={mt[c.adKey]} />)}
+        </div>
+      ):<div className="empty">条件に一致するクリエイティブはありません</div>}
+    </div>
+  );
+}
+
+/* ============================================================
+   ④ 営業分析（type=sales × creatives台帳をマージ）
+============================================================ */
+// カード内：担当者別の内訳アコーディオン（デフォルト閉）
+function StaffBreakdown({list}){
+  const [open,setOpen]=useState(false);
+  const staff=(list||[]).filter(s=>N(s.applied)>0); // 申込0の担当者は非表示（表示のみ）
+  return (
+    <div className="pd">
+      <button className={"pd-head"+(open?" open":"")} onClick={()=>setOpen(o=>!o)}>
+        <span className="pd-ic"><Icon name="users" size={14} /></span>
+        <span className="pd-title">担当者別の内訳</span>
+        <span className="pd-cnt">（{staff.length}名）</span>
+        <span className="pd-chev"><Icon name={open?"chevron-up":"chevron-down"} size={16} /></span>
+      </button>
+      {open? (
+        <div className="pd-body" style={{display:"block"}}>
+          {staff.length? (
+            <div className="staff-list">
+              {staff.map((s,i)=>(
+                <div className="staff-row" key={i}>
+                  <div className="sr-top">
+                    <span className="sr-name" title={s.staff}>{s.staff||"（担当者なし）"}</span>
+                    <span className={"sr-rate "+salesRateCls(s.rate)}>成約率 {salesRate(s.rate,s.rateNum)}</span>
+                  </div>
+                  <div className="sr-stats">
+                    <em>申込 {cntDash(s.applied)}</em>
+                    <em>成約 {cntDash(s.close)}</em>
+                    <em>検討中 {cntDash(s.pending)}</em>
+                    <em>不成約 {cntDash(s.lose)}</em>
+                    <em className="j-muted">未開催 {cntDash(s.notHeld)}</em>
+                    <em>売上 {yen0(s.revenue)}</em>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ):<div className="pd-empty">担当者データがありません</div>}
+        </div>
+      ):null}
+    </div>
+  );
+}
+
+// クリエイティブ別 営業実績カード（画像・タイトルは台帳メタから）
+function SalesCard({s, meta}){
+  const img = (meta && meta.image) || "";
+  return (
+    <div className="cc">
+      <KV src={img} alt={s.adKey} />
+      <div className="body">
+        <div className="ck">{s.adKey}</div>
+        {meta && meta.title? <div className="ctitle">{meta.title}</div>:null}
+
+        <div className="fm-top" style={{gridTemplateColumns:"repeat(2,1fr)"}}>
+          <div className="fm-cell"><span>説明会申込</span><b>{cntDash(s.applied)}名</b></div>
+          <div className="fm-cell"><span>売上</span><b>{yen0(s.revenue)}</b></div>
+        </div>
+
+        <div className="sc-states">
+          <div className="sc-state st-close"><div className="ssk">成約</div><div className="ssv">{cntDash(s.close)}</div></div>
+          <div className="sc-state st-pending"><div className="ssk">検討中</div><div className="ssv">{cntDash(s.pending)}</div></div>
+          <div className="sc-state st-lose"><div className="ssk">不成約</div><div className="ssv">{cntDash(s.lose)}</div></div>
+          <div className="sc-state st-nothd"><div className="ssk">未開催</div><div className="ssv">{cntDash(s.notHeld)}</div></div>
+        </div>
+
+        <div className="fm-top" style={{gridTemplateColumns:"1fr"}}>
+          <div className="fm-cell"><span>成約率</span><b className={salesRateCls(s.rate)}>{salesRate(s.rate,s.rateNum)}</b></div>
+        </div>
+
+        <StaffBreakdown list={s.byStaff} />
+      </div>
+    </div>
+  );
+}
+
+function SalesAnalysis({sales, summary}){
+  const data = sales || {};
+  const byCreative = data.byCreative || [];
+  const byStaff = (data.byStaff || []).filter(s=>N(s.applied)>0); // 申込0の担当者は非表示（表示のみ）
+  const unknownCount = N(data.unknownCount) || 0;
+  const metaMap = useMemo(()=>{ const m={}; ((summary&&summary.creatives)||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[summary]);
+  const cards = useMemo(()=> byCreative.filter(c=>!isUnknownAdKey(c.adKey)), [byCreative]);
+
+  if(!byCreative.length && !byStaff.length){
+    return <div className="empty">営業データがありません</div>;
+  }
+
+  return (
+    <div>
+      {byStaff.length? (
+        <div>
+          <div className="sec-title">担当者別サマリー（全体）</div>
+          <div className="sales-summary">
+            {byStaff.map((s,i)=>(
+              <div className="staff-chip" key={i}>
+                <div className="sc-name"><Icon name="user-plus" size={14} />{s.staff||"（担当者なし）"}</div>
+                <div className="sc-stats">
+                  <em>申込 {cntDash(s.applied)}</em>
+                  <em>成約 {cntDash(s.close)}</em>
+                  <em>検討中 {cntDash(s.pending)}</em>
+                  <em>不成約 {cntDash(s.lose)}</em>
+                  <em className="j-muted">未開催 {cntDash(s.notHeld)}</em>
+                  <em className={salesRateCls(s.rate)}>成約率 {salesRate(s.rate,s.rateNum)}</em>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ):null}
+
+      {unknownCount? (
+        <div className="sales-note">
+          <Icon name="triangle-alert" size={15} />
+          広告外経由（オーガニック等）：{comma(unknownCount)} 件　※広告キー不明のため、クリエイティブ別カードには含めていません
+        </div>
+      ):null}
+
+      <div className="sec-title">クリエイティブ別 営業実績（{cards.length}件）</div>
+      {cards.length? (
+        <div className="cgrid">
+          {cards.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} />)}
+        </div>
+      ):<div className="empty">クリエイティブ別の営業データがありません</div>}
+    </div>
+  );
+}
+
+/* ============================================================
+   データソースバッジ
+============================================================ */
+function SourceBadge({source}){
+  const live = source.summary && source.history;
+  const partial = (source.summary || source.history) && !live;
+  let cls, label;
+  if(live){ cls="live"; label="実データ取得：成功"; }
+  else if(partial){ cls="partial"; label="一部ダミー使用中"; }
+  else { cls="dummy"; label="ダミー使用中"; }
+  return <span className={"srcbadge "+cls}><span className="srcdot"></span>{label}</span>;
+}
+
+/* ============================================================
+   ルート App（左サイドバー構成）
+============================================================ */
+const TABS=[
+  {id:"dash", icon:"layout-dashboard", label:"ダッシュボード"},
+  {id:"crea", icon:"images", label:"クリエイティブ一覧"},
+  {id:"sales", icon:"handshake", label:"営業分析"},
+  {id:"hist", icon:"line-chart", label:"7日間履歴"},
+  {id:"search", icon:"search", label:"検索"},
+];
+
+function App(){
+  const [tab,setTab]=useState("dash");
+  const [summary,setSummary]=useState(null);
+  const [history,setHistory]=useState(null);
+  const [sales,setSales]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [warn,setWarn]=useState("");
+  const [showWarn,setShowWarn]=useState(true);
+  const [source,setSource]=useState({summary:false, history:false, sales:false});
+  const [running,setRunning]=useState(false); // 手動更新（updateAll）実行中
+  const [runMsg,setRunMsg]=useState("");       // 手動更新の失敗メッセージ
+
+  async function load(){
+    setLoading(true); setWarn(""); setShowWarn(true);
+    let s=null,h=null,sa=null,sLive=false,hLive=false,saLive=false;
+    try{ s=await jsonpRetry(URL_SUMMARY, 2, 28000); sLive=true; }catch(e){ s=DUMMY_SUMMARY; console.warn("[OWNER'S] summary 取得失敗:", e.message); }
+    try{ h=await jsonp(URL_HISTORY, 15000); hLive=true; }catch(e){ h=DUMMY_HISTORY; console.warn("[OWNER'S] history 取得失敗:", e.message); }
+    try{ const raw=await jsonpRetry(URL_SALES, 2, 28000); sa=(raw&&raw.sales)?raw.sales:raw; saLive=true; }catch(e){ sa=DUMMY_SALES.sales; console.warn("[OWNER'S] sales 取得失敗:", e.message); }
+    console.log("%c[OWNER'S] type=summary : "+(sLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(sLive?"#16a34a":"#c2820b")+";font-weight:bold");
+    console.log("%c[OWNER'S] type=history : "+(hLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(hLive?"#16a34a":"#c2820b")+";font-weight:bold");
+    console.log("%c[OWNER'S] type=sales   : "+(saLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(saLive?"#16a34a":"#c2820b")+";font-weight:bold");
+    setSummary(s); setHistory(h); setSales(sa); setSource({summary:sLive, history:hLive, sales:saLive});
+    if(!sLive || !hLive){
+      setWarn((!sLive && !hLive)
+        ? "実データの取得に失敗したため、サンプル（ダミー）データを表示しています。"
+        : "一部データの取得に失敗したため、その部分はサンプル（ダミー）を表示しています。");
+    }
+    setLoading(false);
+  }
+
+  // 手動更新：GASの updateAll() を実行 → 完了後に最新データを再取得
+  async function runUpdate(){
+    if(running) return;
+    setRunning(true); setRunMsg("");
+    try{
+      const res = await jsonp(URL_RUN, 240000); // updateAll 実行（最大4分待つ）
+      if(!res || res.ran!==true) throw new Error("run NG");
+      await load(); // 完了後に type=summary / type=history を再取得（画面・最終更新を更新）
+    }catch(e){
+      console.warn("[OWNER'S] 手動更新 失敗:", e.message);
+      setRunMsg("更新に失敗しました。もう一度お試しください。");
+    }finally{
+      setRunning(false);
+    }
+  }
+
+  useEffect(()=>{ load(); },[]);
+
+  if(loading || !summary){
+    return (
+      <div className="app">
+        <Sidebar tab={tab} setTab={setTab} summary={null} onReload={load} />
+        <div className="main"><div className="loadwrap"><div className="spin"></div>データを読み込み中…</div></div>
+      </div>
+    );
+  }
+
+  const pageTitle = (TABS.find(t=>t.id===tab)||{}).label;
+
+  return (
+    <div className="app">
+      <Sidebar tab={tab} setTab={setTab} summary={summary} onReload={load} />
+      <div className="main">
+        <div className="topbar">
+          <div className="page-title">{pageTitle}</div>
+          <div className="tb-right">
+            <SourceBadge source={source} />
+            <button className="reload" onClick={runUpdate} disabled={running}>
+              {running ? "更新中…（1〜3分かかります）" : "↻ 更新"}
+            </button>
+            <button className="bell" title="通知"><Icon name="bell" size={19} /><span className="dot"></span></button>
+            <div className="who">
+              <div className="av">RT</div>
+              <span className="ab-n">{summary.agency||"渡辺チーム"} ▾</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="content">
+          {runMsg? (
+            <div className="banner">
+              <span style={{display:"flex",alignItems:"center",gap:"8px"}}><Icon name="triangle-alert" size={18} />{runMsg}</span>
+              <button className="bx" onClick={()=>setRunMsg("")}>×</button>
+            </div>
+          ):null}
+          {warn && showWarn? (
+            <div className="banner">
+              <span style={{display:"flex",alignItems:"center",gap:"8px"}}><Icon name="triangle-alert" size={18} />{warn}</span>
+              <button className="bx" onClick={()=>setShowWarn(false)}>×</button>
+            </div>
+          ):null}
+          <div className="meta-line">
+            代理店：{summary.agency||"-"}　/　ファネル：{(summary.creatives||[]).length}件　/　生成：{(summary.generatedAt||"").slice(0,16).replace("T"," ")}
+          </div>
+
+          {tab==="dash"   && <Dashboard data={summary} />}
+          {tab==="crea"   && <Creatives data={summary} />}
+          {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} />}
+          {tab==="hist"   && <History history={history} summary={summary} />}
+          {tab==="search" && <Search data={summary} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Sidebar({tab, setTab, summary, onReload}){
+  const lu = summary ? ((summary.lastUpdated||{}).daily || (summary.generatedAt||"").slice(0,16).replace("T"," ")) : "";
+  const agency = summary ? (summary.agency||"渡辺チーム") : "渡辺チーム";
+  return (
+    <div className="sidebar">
+      <div className="side-logo">
+        <b>OWNER'S</b>
+        <span>広告分析ツール</span>
+      </div>
+      <div className="side-nav">
+        {TABS.map(t=>(
+          <button key={t.id} className={"nav-item"+(tab===t.id?" active":"")} onClick={()=>setTab(t.id)}>
+            <span className="ni"><Icon name={t.icon} size={19} /></span>{t.label}
+          </button>
+        ))}
+      </div>
+      <div className="side-foot">
+        <div className="upd-box">
+          <div>
+            <div className="ub-k">データ更新</div>
+            <div className="ub-v">{lu||"—"}</div>
+          </div>
+          <button className="upd-btn" title="再取得" onClick={onReload}>↻</button>
+        </div>
+        <div className="agency-box">
+          <div className="av">{(agency||"R").slice(0,1)}</div>
+          <div>
+            <div className="ab-n">{agency}</div>
+            <div className="ab-s">代理店</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
