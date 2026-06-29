@@ -254,6 +254,39 @@
   .pbadge.pb-day{background:#ffe0c2;color:#7a3e00;}       /* 提出済み(継続中)：肌色背景・黒文字 */
   .pbadge.pb-other{background:#eef1f4;color:#5b6675;}
 
+  /* ===== AI分析（クリエイティブカード内・段階C-1） ===== */
+  .ai-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:2px;
+    background:var(--pp);color:#fff;border:none;border-radius:11px;padding:10px 14px;font-family:inherit;
+    font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(108,76,240,.28);transition:all .15s;}
+  .ai-btn:hover{background:var(--pp2);}
+  .ai-btn:active{transform:scale(.98);}
+  .ai-btn:disabled{background:var(--mute);box-shadow:none;cursor:not-allowed;opacity:.85;}
+  .ai-loading{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--pp2);background:var(--pp-soft2);
+    border:1px solid #e3dbfb;border-radius:11px;padding:11px 13px;margin-top:2px;}
+  .ai-spin{width:16px;height:16px;border:2px solid #d9cffa;border-top-color:var(--pp);border-radius:50%;
+    animation:sp 1s linear infinite;flex-shrink:0;}
+  .ai-err{font-size:12px;color:#c4302b;background:var(--red-bg);border:1px solid #f3c0bd;border-radius:11px;
+    padding:10px 12px;margin-top:2px;line-height:1.5;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .ai-err button{background:var(--pp);color:#fff;border:none;border-radius:8px;padding:5px 11px;font-family:inherit;
+    font-size:11px;font-weight:800;cursor:pointer;flex-shrink:0;}
+  .ai-panel{margin-top:2px;background:var(--pp-soft2);border:1px solid #e3dbfb;border-radius:12px;
+    padding:13px 14px;display:flex;flex-direction:column;gap:11px;}
+  .ai-sum{font-size:13px;font-weight:800;color:var(--pp2);line-height:1.5;background:#fff;
+    border:1px solid #e3dbfb;border-radius:10px;padding:10px 12px;}
+  .ai-sec{display:flex;flex-direction:column;gap:5px;}
+  .ai-sec-h{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--pp2);}
+  .ai-sec-h .ai-ic{display:flex;color:var(--pp2);}
+  .ai-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;}
+  .ai-list li{font-size:12px;color:var(--ink);line-height:1.55;background:#fff;border:1px solid var(--line);
+    border-radius:9px;padding:7px 10px;}
+  .ai-budget{font-size:12px;color:var(--ink);line-height:1.55;background:#fff;border:1px solid var(--line);
+    border-radius:9px;padding:7px 10px;}
+  .ai-props{display:flex;flex-direction:column;gap:6px;}
+  .ai-prop{background:#fff;border:1px solid #e3dbfb;border-left:3px solid var(--pp);border-radius:9px;padding:8px 11px;}
+  .ai-prop .aph{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.5;}
+  .ai-prop .apr{font-size:11px;color:var(--sub);line-height:1.5;margin-top:4px;}
+  .ai-empty{font-size:11.5px;color:var(--mute);}
+
   /* ====== 課題回答ビューア（段階B） ====== */
   .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
   .acard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;transition:border-color .15s,box-shadow .15s;}
@@ -397,6 +430,7 @@ const ICONS = {
   "users":'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   "percent":'<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
   "calendar-range":'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/>',
+  "sparkles":'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
 };
 function Icon({name, size, sw, className, style}){
   const body = ICONS[name];
@@ -891,6 +925,52 @@ function ProgressDetail({items}){
   );
 }
 
+/* ====== AI分析（段階C-1：クリエイティブ別 傾向＋裏付け＋訴求案） ====== */
+// 配列セクションの箇条書き（空項目は除外。全て空なら「該当なし」）
+function AiList({items}){
+  const list=(items||[]).filter(x=>x!=null && String(x).trim());
+  if(!list.length) return <div className="ai-empty">該当なし</div>;
+  return <ul className="ai-list">{list.map((t,i)=><li key={i}>{String(t)}</li>)}</ul>;
+}
+function AiSection({icon, title, children}){
+  return (
+    <div className="ai-sec">
+      <div className="ai-sec-h"><span className="ai-ic"><Icon name={icon} size={13} /></span>{title}</div>
+      {children}
+    </div>
+  );
+}
+// 分析JSON（analysis）を7セクションで整形表示
+function AiResult({ai, onRerun}){
+  const props=(ai.creative_proposals||[]).filter(p=>p && (p.headline || p.reason));
+  const budget=ai.budget_evidence!=null && String(ai.budget_evidence).trim() ? String(ai.budget_evidence) : "";
+  return (
+    <div className="ai-panel">
+      {ai.summary? <div className="ai-sum">{String(ai.summary)}</div>:null}
+      <AiSection icon="flame" title="惹かれた訴求"><AiList items={ai.appeal_trends} /></AiSection>
+      <AiSection icon="target" title="悩み・欲しい未来"><AiList items={ai.pain_and_future} /></AiSection>
+      <AiSection icon="wallet" title="クレカ枠の裏付け">
+        {budget? <div className="ai-budget">{budget}</div>:<div className="ai-empty">該当なし</div>}
+      </AiSection>
+      <AiSection icon="images" title="ショップジャンル傾向"><AiList items={ai.shop_genre_trends} /></AiSection>
+      <AiSection icon="book-open" title="Day5の本音"><AiList items={ai.day5_insights} /></AiSection>
+      <AiSection icon="sparkles" title="新クリエイティブ訴求案">
+        {props.length? (
+          <div className="ai-props">
+            {props.map((p,i)=>(
+              <div className="ai-prop" key={i}>
+                {p.headline? <div className="aph">{String(p.headline)}</div>:null}
+                {p.reason? <div className="apr">{String(p.reason)}</div>:null}
+              </div>
+            ))}
+          </div>
+        ):<div className="ai-empty">該当なし</div>}
+      </AiSection>
+      <button className="ai-btn" onClick={onRerun}><Icon name="sparkles" size={14} /> 再分析</button>
+    </div>
+  );
+}
+
 // 期間配列の1行（クリエイティブ）を全指標＋単価で表示
 function FunnelCard({row, meta, targets, isDaily, period}){
   const si=statusInfo(row.status);
@@ -898,6 +978,23 @@ function FunnelCard({row, meta, targets, isDaily, period}){
   const rating = ratingFromText(row.score);
   const cpaC = costClass(N(row.cpa), targets.cpa);
   const avail = planAvailable(row);
+  // ▼AI分析（手動トリガー・押した時だけ analyze を叩く。コスト管理のため自動では走らせない）
+  const [aiState,setAiState]=useState("idle"); // idle|loading|done|error
+  const [ai,setAi]=useState(null);
+  const [aiErr,setAiErr]=useState("");
+  async function runAnalyze(){
+    if(aiState==="loading") return;
+    setAiState("loading"); setAiErr("");
+    try{
+      const url=API+"?type=analyze&adKey="+encodeURIComponent(row.adKey)+"&_="+Date.now();
+      const raw=await jsonp(url, 90000); // GAS→Anthropicで10〜30秒。コスト都合でリトライはしない
+      if(raw && raw.ok===false){ setAiErr(raw.error||"分析に失敗しました"); setAiState("error"); return; }
+      const a=(raw && raw.analysis)?raw.analysis:raw;
+      if(!a || typeof a!=="object"){ setAiErr("分析結果が空でした"); setAiState("error"); return; }
+      setAi(a); setAiState("done");
+      console.log("%c[OWNER'S] type=analyze : ✅ "+row.adKey,"color:#6c4cf0;font-weight:bold");
+    }catch(e){ setAiErr("分析に失敗しました（"+e.message+"）"); setAiState("error"); console.warn("[OWNER'S] analyze 取得失敗:", e.message); }
+  }
   return (
     <div className={"cc "+si.card}>
       <KV src={img} alt={row.adKey} />
@@ -957,6 +1054,17 @@ function FunnelCard({row, meta, targets, isDaily, period}){
           </div>
         ):null}
         {meta&&meta.body? <div className="ctext ctext-body">{meta.body}</div>:null}
+
+        {aiState==="idle"? (
+          <button className="ai-btn" onClick={runAnalyze}><Icon name="sparkles" size={15} /> AI分析</button>
+        ):null}
+        {aiState==="loading"? (
+          <div className="ai-loading"><span className="ai-spin"></span>AIが傾向を分析中…（10〜30秒）</div>
+        ):null}
+        {aiState==="error"? (
+          <div className="ai-err"><span>{aiErr}</span><button onClick={runAnalyze}>再試行</button></div>
+        ):null}
+        {aiState==="done" && ai? <AiResult ai={ai} onRerun={runAnalyze} />:null}
       </div>
     </div>
   );
