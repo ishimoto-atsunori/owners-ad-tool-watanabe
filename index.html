@@ -244,6 +244,36 @@
   .pbadge.pb-day{background:#ffe0c2;color:#7a3e00;}       /* 提出済み(継続中)：肌色背景・黒文字 */
   .pbadge.pb-other{background:#eef1f4;color:#5b6675;}
 
+  /* ====== 課題回答ビューア（段階B） ====== */
+  .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
+  .acard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;transition:border-color .15s,box-shadow .15s;}
+  .acard:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(0,0,0,.06);}
+  .acard .kv{width:100%;aspect-ratio:1/1;background:var(--panel2);object-fit:cover;display:block;}
+  .acard .kv.ph{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:12px;}
+  .acard .abody{padding:10px 11px;display:flex;flex-direction:column;gap:4px;}
+  .acard .ak{font-size:11px;color:var(--blue);word-break:break-all;font-weight:700;font-family:ui-monospace,monospace;}
+  .acard .atitle{font-size:12px;font-weight:700;line-height:1.4;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .acard .acnt{font-size:12px;color:var(--mute);}
+  .acard .acnt b{color:var(--ink);font-size:14px;}
+  .av-selhead{margin-bottom:12px;}
+  .av-back{display:inline-flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer;}
+  .av-back:hover{border-color:var(--blue);color:var(--blue);}
+  .av-selcard{display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px;}
+  .av-selcard .kv{width:120px;height:120px;flex:none;border-radius:8px;background:var(--panel2);object-fit:cover;}
+  .av-selcard .kv.ph{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:11px;}
+  .av-selmeta{display:flex;flex-direction:column;gap:6px;min-width:0;}
+  .av-selmeta .acnt{font-size:12.5px;color:var(--mute);}
+  .aplist{display:flex;flex-direction:column;gap:10px;}
+  .aperson{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;}
+  .aperson.no-ans{opacity:.5;}
+  .ap-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .ap-name{font-size:13.5px;font-weight:800;color:var(--ink);}
+  .ap-noans{font-size:11px;color:var(--mute);}
+  .ap-days{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+  .aday{display:flex;flex-direction:column;gap:3px;}
+  .aday-k{align-self:flex-start;font-size:11px;font-weight:800;color:#7a3e00;background:#ffe0c2;border-radius:6px;padding:2px 9px;}
+  .aday-v{white-space:pre-wrap;font-size:12.5px;line-height:1.65;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;}
+
   /* ===== 履歴アコーディオン ===== */
   .acc{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-card);margin-bottom:12px;overflow:hidden;}
   .acc-head{width:100%;display:flex;align-items:center;gap:12px;padding:15px 18px;background:transparent;border:none;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s;}
@@ -377,6 +407,7 @@ const URL_SUMMARY = API + "?type=summary";
 const URL_HISTORY = API + "?type=history";
 const URL_RUN     = API + "?type=run"; // updateAll() を手動実行
 const URL_SALES   = API + "?type=sales"; // 営業分析データ
+const URL_ANSWERS = API + "?type=answers"; // 課題回答（クリエイティブ別・遅延取得）
 
 /* ============================================================
    ダミーデータ（取得失敗時のフォールバック）
@@ -1201,6 +1232,102 @@ function SalesCard({s, meta}){
   );
 }
 
+/* ============================================================
+   課題回答ビューア（段階B）
+   - クリエイティブを画像付きカード一覧で表示 → クリックで選択
+   - 選択クリエイティブの回答者を stageLv 降順（ファネル後ろ優先）で表示
+   - 各人：LINE名 ＋ ステージバッジ ＋ Day1〜5回答（pre-wrap）
+   - hasAnswer=false（回答なし）は薄く表示
+============================================================ */
+function AnswerPerson({p}){
+  const days=[["Day1",p.day1Ans],["Day2",p.day2Ans],["Day3",p.day3Ans],["Day5",p.day5Ans]]
+    .filter(d=>String(d[1]||"").trim());
+  return (
+    <div className={"aperson"+(p.hasAnswer?"":" no-ans")}>
+      <div className="ap-head">
+        <span className="ap-name" title={p.lineName}>{p.lineName||"(名前なし)"}</span>
+        <span className={"pbadge "+stageBadgeCls(p.stage)}>{p.stage||"-"}</span>
+        {!p.hasAnswer? <span className="ap-noans">課題回答なし</span> : null}
+      </div>
+      {p.hasAnswer && days.length? (
+        <div className="ap-days">
+          {days.map((d,i)=>(
+            <div className="aday" key={i}>
+              <span className="aday-k">{d[0]}</span>
+              <div className="aday-v">{d[1]}</div>
+            </div>
+          ))}
+        </div>
+      ):null}
+    </div>
+  );
+}
+
+function AnswersViewer({answers, summary, state, onRetry}){
+  const [sel,setSel]=useState(null);
+  const metaMap=useMemo(()=>{ const m={}; ((summary&&summary.creatives)||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[summary]);
+  const byCreative=(answers&&answers.byCreative)||{};
+  const cards=useMemo(()=> Object.keys(byCreative).map(adKey=>{
+    const list=byCreative[adKey]||[];
+    return { adKey, meta:metaMap[adKey]||{}, count:list.length, withAns:list.filter(p=>p.hasAnswer).length };
+  }).sort((a,b)=> (b.withAns-a.withAns) || (b.count-a.count)), [byCreative,metaMap]);
+
+  if(state==="loading" || (state==="idle")){
+    return <div className="loadwrap"><div className="spin"></div>課題回答を読み込み中…</div>;
+  }
+  if(state==="error"){
+    return <div className="empty">課題回答データの取得に失敗しました。<button className="reload" style={{marginLeft:8}} onClick={onRetry}>↻ 再試行</button></div>;
+  }
+
+  // ▼詳細：選択したクリエイティブの回答者一覧（stageLv降順のまま）
+  if(sel){
+    const list=byCreative[sel]||[];
+    const meta=metaMap[sel]||{};
+    const withAns=list.filter(p=>p.hasAnswer).length;
+    return (
+      <div>
+        <div className="av-selhead">
+          <button className="av-back" onClick={()=>setSel(null)}>← クリエイティブ一覧へ戻る</button>
+        </div>
+        <div className="av-selcard">
+          <KV src={meta.image||""} alt={sel} />
+          <div className="av-selmeta">
+            <div className="ck">{sel}</div>
+            {meta.title? <div className="ctitle">{meta.title}</div>:null}
+            <div className="acnt">{list.length}名（回答あり {withAns}名）・ファネル後ろ順（成約→…→Day1）</div>
+          </div>
+        </div>
+        {list.length? (
+          <div className="aplist">{list.map((p,i)=><AnswerPerson key={i} p={p} />)}</div>
+        ):<div className="empty">このクリエイティブの回答者はいません</div>}
+      </div>
+    );
+  }
+
+  // ▼一覧：クリエイティブ画像カード
+  return (
+    <div>
+      <div className="meta-line" style={{marginTop:0}}>
+        クリエイティブ {cards.length}件 / 回答者 {(answers&&answers.personCount)||0}名 — カードを選ぶとDay回答が見られます
+      </div>
+      {cards.length? (
+        <div className="agrid">
+          {cards.map(c=>(
+            <button className="acard" key={c.adKey} onClick={()=>setSel(c.adKey)}>
+              <KV src={c.meta.image||""} alt={c.adKey} />
+              <div className="abody">
+                <div className="ak">{c.adKey}</div>
+                {c.meta.title? <div className="atitle">{c.meta.title}</div>:null}
+                <div className="acnt"><b>{c.count}</b>名（回答 {c.withAns}）</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      ):<div className="empty">課題回答データがありません</div>}
+    </div>
+  );
+}
+
 function SalesAnalysis({sales, summary}){
   const data = sales || {};
   const byCreative = data.byCreative || [];
@@ -1272,6 +1399,7 @@ function SourceBadge({source}){
 const TABS=[
   {id:"dash", icon:"layout-dashboard", label:"ダッシュボード"},
   {id:"crea", icon:"images", label:"クリエイティブ一覧"},
+  {id:"answers", icon:"file-text", label:"課題回答"},
   {id:"sales", icon:"handshake", label:"営業分析"},
   {id:"hist", icon:"line-chart", label:"7日間履歴"},
   {id:"search", icon:"search", label:"検索"},
@@ -1282,6 +1410,8 @@ function App(){
   const [summary,setSummary]=useState(null);
   const [history,setHistory]=useState(null);
   const [sales,setSales]=useState(null);
+  const [answers,setAnswers]=useState(null);
+  const [answersState,setAnswersState]=useState("idle"); // 課題回答の遅延取得状態 idle|loading|done|error
   const [loading,setLoading]=useState(true);
   const [warn,setWarn]=useState("");
   const [showWarn,setShowWarn]=useState(true);
@@ -1322,6 +1452,22 @@ function App(){
       setRunning(false);
     }
   }
+
+  // ▼段階B：課題回答（遅延取得：「課題回答」タブを初めて開いた時だけ fetch。summaryは重くしない）
+  async function loadAnswers(){
+    if(answersState==="loading"||answersState==="done") return;
+    setAnswersState("loading");
+    try{
+      const raw=await jsonpRetry(URL_ANSWERS + "&_=" + Date.now(), 2, 28000); // 再デプロイを確実に拾うキャッシュバスター
+      const a=(raw&&raw.answers)?raw.answers:raw;
+      setAnswers(a||{byCreative:{},personCount:0}); setAnswersState("done");
+      console.log("%c[OWNER'S] type=answers : ✅ 実データ取得 成功","color:#16a34a;font-weight:bold");
+    }catch(e){
+      setAnswers({byCreative:{},personCount:0}); setAnswersState("error");
+      console.warn("[OWNER'S] answers 取得失敗:", e.message);
+    }
+  }
+  useEffect(()=>{ if(tab==="answers") loadAnswers(); },[tab]);
 
   useEffect(()=>{ load(); },[]);
 
@@ -1374,6 +1520,7 @@ function App(){
 
           {tab==="dash"   && <Dashboard data={summary} />}
           {tab==="crea"   && <Creatives data={summary} />}
+          {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} />}
           {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} />}
           {tab==="hist"   && <History history={history} summary={summary} />}
           {tab==="search" && <Search data={summary} />}
