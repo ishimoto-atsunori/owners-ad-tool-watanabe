@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>【渡辺team】OWNER'S 広告分析ツール</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23f97316'/><text x='50' y='55' font-size='52' font-family='sans-serif' font-weight='bold' fill='%23ffffff' text-anchor='middle' dominant-baseline='central'>渡</text></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23f5821f'/><text x='50' y='54' font-size='62' font-family='Arial,Helvetica,sans-serif' font-weight='bold' fill='%23ffffff' text-anchor='middle' dominant-baseline='central'>渡</text></svg>" />
 <style>
   :root{
     --bg:#f3f4f8; --panel:#ffffff; --panel2:#f6f7fb; --line:#e7e8ef;
@@ -101,6 +101,16 @@
   input[type=text]{width:100%;}
   select:focus,input:focus{border-color:var(--pp);box-shadow:0 0 0 3px rgba(108,76,240,.12);}
   .grow{flex:1 1 auto;}
+
+  /* ===== 指定期間（カスタム期間ファネル） ===== */
+  .dz{display:inline-flex;align-items:center;gap:7px;}
+  .dz input[type=date]{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:13px;border-radius:11px;padding:9px 11px;outline:none;box-shadow:var(--shadow);}
+  .dz input[type=date]:focus{border-color:var(--pp);box-shadow:0 0 0 3px rgba(108,76,240,.12);}
+  .dz-sep{color:var(--mute);font-size:13px;}
+  .dz-go{background:var(--pp);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:700;padding:9px 18px;border-radius:11px;cursor:pointer;box-shadow:0 2px 8px rgba(108,76,240,.3);}
+  .dz-go:hover{filter:brightness(1.05);}
+  .cohort-note{font-size:11.5px;color:var(--mute);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 16px;line-height:1.5;}
+  .cohort-note b{color:var(--ink);}
 
   /* ===== 総合評価 ===== */
   .verdict{border-radius:20px;padding:22px 24px;margin:0 0 18px;border:1px solid var(--line);background:var(--panel);
@@ -953,13 +963,35 @@ function FunnelCard({row, meta, targets, isDaily, period}){
 }
 
 function Creatives({data}){
+  const fmtD=(d)=>{const z=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
   const [period,setPeriod]=useState("cumulative");
   const [filter,setFilter]=useState("all");
   const [sort,setSort]=useState("status");
-  const labels={daily:"日次",weekly:"7日間",cumulative:"累計"};
-  const rows = data[period]||[];
+  // 指定期間（カスタム期間ファネル）
+  const [cSince,setCSince]=useState(()=>fmtD(new Date(Date.now()-14*86400000)));
+  const [cUntil,setCUntil]=useState(()=>fmtD(new Date()));
+  const [cRows,setCRows]=useState(null);
+  const [cState,setCState]=useState("idle"); // idle|loading|done|error
+  const [cErr,setCErr]=useState("");
+  const labels={daily:"日次",weekly:"7日間",cumulative:"累計",custom:"指定期間"};
+  const isCustom = period==="custom";
+  const rows = isCustom ? (cRows||[]) : (data[period]||[]);
   const targets = data.targets||{};
   const isDaily = period==="daily";
+
+  async function loadReport(){
+    setCState("loading"); setCErr("");
+    try{
+      const url=API+"?type=report&since="+encodeURIComponent(cSince)+"&until="+encodeURIComponent(cUntil)+"&mode=cumulative&_="+Date.now();
+      const raw=await jsonpRetry(url, 2, 28000);
+      if(raw && raw.ok===false){ setCErr(raw.error||"取得に失敗しました"); setCRows([]); setCState("error"); return; }
+      setCRows((raw&&raw.report)?raw.report:[]); setCState("done");
+      console.log("%c[OWNER'S] type=report : ✅ 取得成功 "+cSince+"〜"+cUntil,"color:#16a34a;font-weight:bold");
+    }catch(e){ setCErr("取得に失敗しました（"+e.message+"）"); setCRows([]); setCState("error"); console.warn("[OWNER'S] report 取得失敗:", e.message); }
+  }
+  // 「指定期間」を初めて開いた時だけ自動取得（既定の2週間で）。以降は「表示」ボタンで再取得。
+  useEffect(()=>{ if(isCustom && cState==="idle") loadReport(); },[period]);
+
   const metaMap = useMemo(()=>{ const m={}; (data.creatives||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[data.creatives]);
   const enriched = useMemo(()=> rows.map(r=>{
     const meta=metaMap[r.adKey]||{};
@@ -976,14 +1008,35 @@ function Creatives({data}){
     return v;
   },[enriched,filter,sort]);
 
+  let body;
+  if(isCustom && (cState==="loading"||cState==="idle")){
+    body = <div className="loadwrap"><div className="spin"></div>指定期間のデータを集計中…</div>;
+  } else if(isCustom && cState==="error"){
+    body = <div className="empty">{cErr||"取得に失敗しました"}<button className="reload" style={{marginLeft:8}} onClick={loadReport}>↻ 再試行</button></div>;
+  } else {
+    body = view.length? (
+      <div className="cgrid">
+        {view.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} />)}
+      </div>
+    ):<div className="empty">該当するクリエイティブはありません</div>;
+  }
+
   return (
     <div>
       <div className="row-controls">
         <div className="seg">
-          {["daily","weekly","cumulative"].map(p=>(
+          {["daily","weekly","cumulative","custom"].map(p=>(
             <button key={p} className={period===p?"active":""} onClick={()=>setPeriod(p)}>{labels[p]}</button>
           ))}
         </div>
+        {isCustom? (
+          <div className="dz">
+            <input type="date" value={cSince} max={cUntil} onChange={e=>setCSince(e.target.value)} />
+            <span className="dz-sep">〜</span>
+            <input type="date" value={cUntil} min={cSince} onChange={e=>setCUntil(e.target.value)} />
+            <button className="dz-go" onClick={loadReport}>表示</button>
+          </div>
+        ):null}
         <select value={filter} onChange={e=>setFilter(e.target.value)}>
           <option value="all">全ステータス</option>
           <option value="on">配信中</option>
@@ -1003,11 +1056,10 @@ function Creatives({data}){
         </select>
         <span className="count">{view.length}件（{labels[period]}）</span>
       </div>
-      {view.length? (
-        <div className="cgrid">
-          {view.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} />)}
-        </div>
-      ):<div className="empty">該当するクリエイティブはありません</div>}
+      {isCustom? (
+        <div className="cohort-note">※選択期間に<b>友だち追加された人</b>のファネル到達状況（成約日ではなく<b>友だち追加日</b>で集計するコホート方式）。消化金額のみ実際の消化日ベース。</div>
+      ):null}
+      {body}
     </div>
   );
 }
