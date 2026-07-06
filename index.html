@@ -1583,7 +1583,7 @@ function App(){
     setLoading(true); setWarn(""); setShowWarn(true);
     let s=null,h=null,sa=null,sLive=false,hLive=false,saLive=false;
     try{ s=await jsonpRetry(URL_SUMMARY, 2, 28000); sLive=true; }catch(e){ s=DUMMY_SUMMARY; console.warn("[OWNER'S] summary 取得失敗:", e.message); }
-    try{ h=await jsonp(URL_HISTORY, 15000); hLive=true; }catch(e){ h=DUMMY_HISTORY; console.warn("[OWNER'S] history 取得失敗:", e.message); }
+    try{ h=await jsonpRetry(URL_HISTORY, 2, 28000); hLive=true; }catch(e){ h=DUMMY_HISTORY; console.warn("[OWNER'S] history 取得失敗:", e.message); }
     try{ const raw=await jsonpRetry(URL_SALES, 2, 28000); sa=(raw&&raw.sales)?raw.sales:raw; saLive=true; }catch(e){ sa=DUMMY_SALES.sales; console.warn("[OWNER'S] sales 取得失敗:", e.message); }
     console.log("%c[OWNER'S] type=summary : "+(sLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(sLive?"#16a34a":"#c2820b")+";font-weight:bold");
     console.log("%c[OWNER'S] type=history : "+(hLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(hLive?"#16a34a":"#c2820b")+";font-weight:bold");
