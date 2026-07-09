@@ -286,6 +286,14 @@
   .ai-prop .aph{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.5;}
   .ai-prop .apr{font-size:11px;color:var(--sub);line-height:1.5;margin-top:4px;}
   .ai-empty{font-size:11.5px;color:var(--mute);}
+  /* ▼ボタンB（営業分析タブ・上位層AI傾向分析）：確定値の内訳テーブル */
+  .aib-meta{font-size:11px;color:var(--sub);line-height:1.5;}
+  .aib-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .aib-table td{font-size:11.5px;color:var(--ink);line-height:1.5;padding:6px 9px;border-top:1px solid var(--line);vertical-align:top;}
+  .aib-table tr:first-child td{border-top:none;}
+  .aib-table .aib-n{width:52px;text-align:right;font-weight:800;color:var(--pp2);white-space:nowrap;}
+  /* ▼ビルドタグ（サイドバー最下部・デプロイ反映確認用） */
+  .build-tag{font-size:9.5px;color:var(--mute);text-align:center;margin-top:8px;line-height:1.4;}
 
   /* ====== 課題回答ビューア（段階B） ====== */
   .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
@@ -452,6 +460,11 @@ const URL_HISTORY = API + "?type=history";
 const URL_RUN     = API + "?type=run"; // updateAll() を手動実行
 const URL_SALES   = API + "?type=sales"; // 営業分析データ
 const URL_ANSWERS = API + "?type=answers"; // 課題回答（クリエイティブ別・遅延取得）
+
+// ▼ビルドタグ：いま開いているページがどの版かを即判別するための表示（サイドバー最下部＋起動時コンソール）。
+//   デプロイ反映確認用。ボタンBが見えない等の際は、まずこの表記が最新かを確認する（古ければキャッシュか別ページ）。
+const BUILD_TAG = "build 2026-07-09 / ボタンB搭載版（渡辺）";
+console.log("%c[OWNER'S] " + BUILD_TAG, "color:#6c4cf0;font-weight:bold");
 
 /* ============================================================
    ダミーデータ（取得失敗時のフォールバック）
@@ -1360,9 +1373,81 @@ function StaffBreakdown({list}){
   );
 }
 
+/* ====== ボタンB（段階C-2）：上位層（説明会申込者）AI傾向分析 ====== */
+// 確定値の内訳テーブル（GAS集計値をそのまま表示。長文値は先頭90文字＋title属性に全文）
+function aibShort(v,n){ const s=String(v==null?"":v).trim(); return s.length>n? s.slice(0,n)+"…" : s; }
+function AiBStatTable({items}){
+  const list=(items||[]).filter(x=>x && String(x.value||"").trim());
+  if(!list.length) return <div className="ai-empty">該当なし</div>;
+  return (
+    <table className="aib-table"><tbody>
+      {list.map((it,i)=>(
+        <tr key={i}>
+          <td title={String(it.value)}>{aibShort(it.value,90)}</td>
+          <td className="aib-n">{comma(it.count)}名</td>
+        </tr>
+      ))}
+    </tbody></table>
+  );
+}
+// 分析結果（表パート＝確定値テーブル ＋ 自然文パート＝Claude）を整形表示
+function AiBResult({d, onRerun}){
+  const ai=d.analysis||{};
+  const st=d.stats||{};
+  const props=(ai.creative_proposals||[]).filter(p=>p && (p.headline || p.reason));
+  const price=ai.price_reaction!=null && String(ai.price_reaction).trim()? String(ai.price_reaction):"";
+  return (
+    <div className="ai-panel">
+      {ai.summary? <div className="ai-sum">{String(ai.summary)}</div>:null}
+      <div className="aib-meta">
+        対象：説明会申込 {comma(d.appliedCount)}名中、面談インサイトあり {comma(d.insightCount)}名
+        {d.truncated? "（うち上位・離脱の両端 "+comma(d.analyzedCount)+"名分をAI分析）":""}
+      </div>
+      <AiSection icon="handshake" title="成約ステータス内訳（確定値）"><AiBStatTable items={st.statuses} /></AiSection>
+      <AiSection icon="users" title="顧客タイプ（確定値）"><AiBStatTable items={st.customerTypes} /></AiSection>
+      <AiSection icon="wallet" title="価格反応（確定値）"><AiBStatTable items={st.priceReactions} /></AiSection>
+      <AiSection icon="target" title="共通する悩み・きっかけ"><AiList items={ai.common_pain} /></AiSection>
+      <AiSection icon="flame" title="響いたポイント"><AiList items={ai.resonate_points} /></AiSection>
+      <AiSection icon="wallet" title="価格反応の傾向（AI）">
+        {price? <div className="ai-budget">{price}</div>:<div className="ai-empty">該当なし</div>}
+      </AiSection>
+      <AiSection icon="trending-up" title="成約層と離脱層の違い"><AiList items={ai.deal_vs_drop} /></AiSection>
+      <AiSection icon="sparkles" title="この層に効く訴求案">
+        {props.length? (
+          <div className="ai-props">
+            {props.map((p,i)=>(
+              <div className="ai-prop" key={i}>
+                {p.headline? <div className="aph">{String(p.headline)}</div>:null}
+                {p.reason? <div className="apr">{String(p.reason)}</div>:null}
+              </div>
+            ))}
+          </div>
+        ):<div className="ai-empty">該当なし</div>}
+      </AiSection>
+      <button className="ai-btn" onClick={onRerun}><Icon name="sparkles" size={14} /> 再分析</button>
+    </div>
+  );
+}
+
 // クリエイティブ別 営業実績カード（画像・タイトルは台帳メタから）
+// ▼ボタンB（段階C-2）：上位層AI傾向分析を搭載（手動トリガー・押した時だけ ?type=analyzeB を叩く）
 function SalesCard({s, meta}){
   const img = (meta && meta.image) || "";
+  const [aiState,setAiState]=useState("idle"); // idle|loading|done|error
+  const [ai,setAi]=useState(null);
+  const [aiErr,setAiErr]=useState("");
+  async function runAnalyzeB(){
+    if(aiState==="loading") return;
+    setAiState("loading"); setAiErr("");
+    try{
+      const url=API+"?type=analyzeB&adKey="+encodeURIComponent(s.adKey)+"&_="+Date.now();
+      const raw=await jsonp(url, 90000); // GAS→外部シート読込→Anthropicで10〜40秒。コスト都合でリトライはしない
+      if(raw && raw.ok===false){ setAiErr(raw.error||"分析に失敗しました"); setAiState("error"); return; }
+      if(!raw || !raw.analysis || typeof raw.analysis!=="object"){ setAiErr("分析結果が空でした"); setAiState("error"); return; }
+      setAi(raw); setAiState("done");
+      console.log("%c[OWNER'S] type=analyzeB : ✅ "+s.adKey,"color:#6c4cf0;font-weight:bold");
+    }catch(e){ setAiErr("分析に失敗しました（"+e.message+"）"); setAiState("error"); console.warn("[OWNER'S] analyzeB 取得失敗:", e.message); }
+  }
   return (
     <div className="cc">
       <KV src={img} alt={s.adKey} />
@@ -1387,6 +1472,17 @@ function SalesCard({s, meta}){
         </div>
 
         <StaffBreakdown list={s.byStaff} />
+
+        {aiState==="idle"? (
+          <button className="ai-btn" onClick={runAnalyzeB}><Icon name="sparkles" size={15} /> AI傾向分析（上位層）</button>
+        ):null}
+        {aiState==="loading"? (
+          <div className="ai-loading"><span className="ai-spin"></span>面談インサイトをAIが分析中…（10〜40秒）</div>
+        ):null}
+        {aiState==="error"? (
+          <div className="ai-err"><span>{aiErr}</span><button onClick={runAnalyzeB}>再試行</button></div>
+        ):null}
+        {aiState==="done" && ai? <AiBResult d={ai} onRerun={runAnalyzeB} />:null}
       </div>
     </div>
   );
@@ -1721,6 +1817,7 @@ function Sidebar({tab, setTab, summary, onReload}){
             <div className="ab-s">代理店</div>
           </div>
         </div>
+        <div className="build-tag" title="デプロイ反映確認用のビルドタグ">{BUILD_TAG}</div>
       </div>
     </div>
   );
