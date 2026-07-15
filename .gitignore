@@ -11,3 +11,4 @@
 *.csv
 # 手動バックアップHTMLはリポジトリに含めない
 *_backup_*.html
+*_bk_*.html
