@@ -286,6 +286,14 @@
   .ai-prop .aph{font-size:12.5px;font-weight:800;color:var(--ink);line-height:1.5;}
   .ai-prop .apr{font-size:11px;color:var(--sub);line-height:1.5;margin-top:4px;}
   .ai-empty{font-size:11.5px;color:var(--mute);}
+  /* ▼ボタンB（営業分析タブ・上位層AI傾向分析）：確定値の内訳テーブル */
+  .aib-meta{font-size:11px;color:var(--sub);line-height:1.5;}
+  .aib-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .aib-table td{font-size:11.5px;color:var(--ink);line-height:1.5;padding:6px 9px;border-top:1px solid var(--line);vertical-align:top;}
+  .aib-table tr:first-child td{border-top:none;}
+  .aib-table .aib-n{width:52px;text-align:right;font-weight:800;color:var(--pp2);white-space:nowrap;}
+  /* ▼ビルドタグ（サイドバー最下部・デプロイ反映確認用） */
+  .build-tag{font-size:9.5px;color:var(--mute);text-align:center;margin-top:8px;line-height:1.4;}
 
   /* ====== 課題回答ビューア（段階B） ====== */
   .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
@@ -343,6 +351,25 @@
   .staff-chip .sc-stats em{font-style:normal;font-weight:700;color:var(--sub);}
   .staff-chip .sc-stats em.j-good{color:var(--green);} .staff-chip .sc-stats em.j-ok{color:var(--amber);}
   .staff-chip .sc-stats em.j-bad{color:var(--red);} .staff-chip .sc-stats em.j-muted{color:var(--mute);}
+  /* ▼顧客明細テーブル（v34：クリエイティブ別カード内・担当者別の内訳で使用。折りたたみ式・デフォルト閉） */
+  .sc-dt{margin-top:7px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel2);}
+  .sc-dt-head{width:100%;display:flex;align-items:center;gap:6px;padding:7px 10px;background:transparent;border:none;cursor:pointer;
+    font-family:inherit;text-align:left;font-size:11.5px;font-weight:800;color:var(--sub);transition:background .15s;}
+  .sc-dt-head:hover{background:rgba(0,0,0,.03);}
+  .sc-dt-head svg{color:var(--pp2);flex-shrink:0;}
+  .sc-dt-head .cnt{font-weight:700;color:var(--mute);}
+  .sc-dt-head .chev{margin-left:auto;display:flex;color:var(--mute);}
+  .sc-dt-body{max-height:260px;overflow-y:auto;border-top:1px solid var(--line);background:var(--panel);}
+  .sc-dt table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  .sc-dt td{padding:5px 10px;border-top:1px solid var(--line);color:var(--ink);vertical-align:middle;}
+  .sc-dt tr:first-child td{border-top:none;}
+  .sc-dt td.dt-name{font-weight:700;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sc-dt td.dt-amt{text-align:right;font-weight:700;white-space:nowrap;color:var(--sub);}
+  .dt-badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10.5px;font-weight:800;border:1px solid transparent;white-space:nowrap;}
+  .dt-badge.b-close{background:var(--green-bg);color:#15803d;border-color:#bce7c8;}
+  .dt-badge.b-pending{background:var(--amber-bg);color:#a96809;border-color:#ecd79a;}
+  .dt-badge.b-lose{background:var(--red-bg);color:#b02a2e;border-color:#f2c6c7;}
+  .dt-badge.b-nothd{background:var(--panel2);color:var(--mute);border-color:#d8dde3;border-style:dashed;}
   .sales-note{font-size:11.5px;color:var(--sub);background:var(--amber-bg);border:1px solid #ecd79a;border-radius:11px;
     padding:9px 12px;margin:0 0 18px;display:flex;align-items:center;gap:7px;line-height:1.45;}
   .sales-note svg{color:#a96809;flex-shrink:0;}
@@ -452,6 +479,11 @@ const URL_HISTORY = API + "?type=history";
 const URL_RUN     = API + "?type=run"; // updateAll() を手動実行
 const URL_SALES   = API + "?type=sales"; // 営業分析データ
 const URL_ANSWERS = API + "?type=answers"; // 課題回答（クリエイティブ別・遅延取得）
+
+// ▼ビルドタグ：いま開いているページがどの版かを即判別するための表示（サイドバー最下部＋起動時コンソール）。
+//   デプロイ反映確認用。ボタンBが見えない等の際は、まずこの表記が最新かを確認する（古ければキャッシュか別ページ）。
+const BUILD_TAG = "build 2026-07-15 / 営業明細UI搭載版（渡辺）";
+console.log("%c[OWNER'S] " + BUILD_TAG, "color:#6c4cf0;font-weight:bold");
 
 /* ============================================================
    ダミーデータ（取得失敗時のフォールバック）
@@ -1350,6 +1382,8 @@ function StaffBreakdown({list}){
                     <em className="j-muted">未開催 {cntDash(s.notHeld)}</em>
                     <em>売上 {yen0(s.revenue)}</em>
                   </div>
+                  {/* ▼v34 このクリエイティブ×この担当者の顧客明細（GAS v33R: byCreative[].byStaff[].details） */}
+                  <StaffDetails details={s.details} />
                 </div>
               ))}
             </div>
@@ -1360,9 +1394,81 @@ function StaffBreakdown({list}){
   );
 }
 
+/* ====== ボタンB（段階C-2）：上位層（説明会申込者）AI傾向分析 ====== */
+// 確定値の内訳テーブル（GAS集計値をそのまま表示。長文値は先頭90文字＋title属性に全文）
+function aibShort(v,n){ const s=String(v==null?"":v).trim(); return s.length>n? s.slice(0,n)+"…" : s; }
+function AiBStatTable({items}){
+  const list=(items||[]).filter(x=>x && String(x.value||"").trim());
+  if(!list.length) return <div className="ai-empty">該当なし</div>;
+  return (
+    <table className="aib-table"><tbody>
+      {list.map((it,i)=>(
+        <tr key={i}>
+          <td title={String(it.value)}>{aibShort(it.value,90)}</td>
+          <td className="aib-n">{comma(it.count)}名</td>
+        </tr>
+      ))}
+    </tbody></table>
+  );
+}
+// 分析結果（表パート＝確定値テーブル ＋ 自然文パート＝Claude）を整形表示
+function AiBResult({d, onRerun}){
+  const ai=d.analysis||{};
+  const st=d.stats||{};
+  const props=(ai.creative_proposals||[]).filter(p=>p && (p.headline || p.reason));
+  const price=ai.price_reaction!=null && String(ai.price_reaction).trim()? String(ai.price_reaction):"";
+  return (
+    <div className="ai-panel">
+      {ai.summary? <div className="ai-sum">{String(ai.summary)}</div>:null}
+      <div className="aib-meta">
+        対象：説明会申込 {comma(d.appliedCount)}名中、面談インサイトあり {comma(d.insightCount)}名
+        {d.truncated? "（うち上位・離脱の両端 "+comma(d.analyzedCount)+"名分をAI分析）":""}
+      </div>
+      <AiSection icon="handshake" title="成約ステータス内訳（確定値）"><AiBStatTable items={st.statuses} /></AiSection>
+      <AiSection icon="users" title="顧客タイプ（確定値）"><AiBStatTable items={st.customerTypes} /></AiSection>
+      <AiSection icon="wallet" title="価格反応（確定値）"><AiBStatTable items={st.priceReactions} /></AiSection>
+      <AiSection icon="target" title="共通する悩み・きっかけ"><AiList items={ai.common_pain} /></AiSection>
+      <AiSection icon="flame" title="響いたポイント"><AiList items={ai.resonate_points} /></AiSection>
+      <AiSection icon="wallet" title="価格反応の傾向（AI）">
+        {price? <div className="ai-budget">{price}</div>:<div className="ai-empty">該当なし</div>}
+      </AiSection>
+      <AiSection icon="trending-up" title="成約層と離脱層の違い"><AiList items={ai.deal_vs_drop} /></AiSection>
+      <AiSection icon="sparkles" title="この層に効く訴求案">
+        {props.length? (
+          <div className="ai-props">
+            {props.map((p,i)=>(
+              <div className="ai-prop" key={i}>
+                {p.headline? <div className="aph">{String(p.headline)}</div>:null}
+                {p.reason? <div className="apr">{String(p.reason)}</div>:null}
+              </div>
+            ))}
+          </div>
+        ):<div className="ai-empty">該当なし</div>}
+      </AiSection>
+      <button className="ai-btn" onClick={onRerun}><Icon name="sparkles" size={14} /> 再分析</button>
+    </div>
+  );
+}
+
 // クリエイティブ別 営業実績カード（画像・タイトルは台帳メタから）
+// ▼ボタンB（段階C-2）：上位層AI傾向分析を搭載（手動トリガー・押した時だけ ?type=analyzeB を叩く）
 function SalesCard({s, meta}){
   const img = (meta && meta.image) || "";
+  const [aiState,setAiState]=useState("idle"); // idle|loading|done|error
+  const [ai,setAi]=useState(null);
+  const [aiErr,setAiErr]=useState("");
+  async function runAnalyzeB(){
+    if(aiState==="loading") return;
+    setAiState("loading"); setAiErr("");
+    try{
+      const url=API+"?type=analyzeB&adKey="+encodeURIComponent(s.adKey)+"&_="+Date.now();
+      const raw=await jsonp(url, 90000); // GAS→外部シート読込→Anthropicで10〜40秒。コスト都合でリトライはしない
+      if(raw && raw.ok===false){ setAiErr(raw.error||"分析に失敗しました"); setAiState("error"); return; }
+      if(!raw || !raw.analysis || typeof raw.analysis!=="object"){ setAiErr("分析結果が空でした"); setAiState("error"); return; }
+      setAi(raw); setAiState("done");
+      console.log("%c[OWNER'S] type=analyzeB : ✅ "+s.adKey,"color:#6c4cf0;font-weight:bold");
+    }catch(e){ setAiErr("分析に失敗しました（"+e.message+"）"); setAiState("error"); console.warn("[OWNER'S] analyzeB 取得失敗:", e.message); }
+  }
   return (
     <div className="cc">
       <KV src={img} alt={s.adKey} />
@@ -1387,6 +1493,17 @@ function SalesCard({s, meta}){
         </div>
 
         <StaffBreakdown list={s.byStaff} />
+
+        {aiState==="idle"? (
+          <button className="ai-btn" onClick={runAnalyzeB}><Icon name="sparkles" size={15} /> AI傾向分析（上位層）</button>
+        ):null}
+        {aiState==="loading"? (
+          <div className="ai-loading"><span className="ai-spin"></span>面談インサイトをAIが分析中…（10〜40秒）</div>
+        ):null}
+        {aiState==="error"? (
+          <div className="ai-err"><span>{aiErr}</span><button onClick={runAnalyzeB}>再試行</button></div>
+        ):null}
+        {aiState==="done" && ai? <AiBResult d={ai} onRerun={runAnalyzeB} />:null}
       </div>
     </div>
   );
@@ -1488,6 +1605,55 @@ function AnswersViewer({answers, summary, state, onRetry}){
   );
 }
 
+/* ▼顧客明細テーブル（GAS v33R: byCreative[].byStaff[].details）。
+   ▼v34：表示先を「担当者別サマリー」から「クリエイティブ別カード内・担当者別の内訳」へ変更。
+   StaffBreakdown の各担当者行（集計の下）に置き、「そのクリエイティブ×その担当者」の明細を表示する。
+   RIDE/渡辺共用：どちらのAPIでも details が来ていれば表示する汎用実装。
+   details が空/未定義なら何も出さない（既存表示のみ。渡辺版GAS未対応の間も安全）。
+   並び順はAPIのまま（GAS側で面談日程昇順ソート済み）。
+   bg（H列背景色＝ステータス判定根拠）と src（WAC/代行屋）は画面に出さず、
+   行の title 属性（ホバーで面談日程・bg・srcを表示）と data-* 属性（DevTools確認用）にのみ保持。 */
+function dtStatusCls(st){
+  if(st==="成約") return "b-close";
+  if(st==="検討中") return "b-pending";
+  if(st==="不成約") return "b-lose";
+  return "b-nothd"; // 未開催・想定外値
+}
+function dtAmount(v){
+  if(typeof v==="number" && isFinite(v)) return "¥"+Math.round(v).toLocaleString("ja-JP"); // 数値→¥490,000形式
+  const s=String(v==null?"":v).trim();
+  return s? s : "—"; // テキスト→そのまま／空→ダッシュ
+}
+function StaffDetails({details}){
+  const [open,setOpen]=useState(false); // 明細が多い担当者（20件超等）を考慮し折りたたみ式（デフォルト閉）
+  const list=Array.isArray(details)? details : [];
+  if(!list.length) return null;
+  return (
+    <div className="sc-dt">
+      <button className="sc-dt-head" onClick={()=>setOpen(o=>!o)}>
+        <Icon name="file-text" size={13} />
+        明細を{open?"隠す":"表示"}<span className="cnt">（{list.length}件）</span>
+        <span className="chev"><Icon name={open?"chevron-up":"chevron-down"} size={14} /></span>
+      </button>
+      {open? (
+        <div className="sc-dt-body">
+          <table><tbody>
+            {list.map((d,i)=>(
+              <tr key={i}
+                  title={"面談日程: "+(d.date||"—")+" ／ 判定根拠(H列背景色): "+(d.bg||"—")+" ／ 出所: "+(d.src||"—")}
+                  data-bg={d.bg||""} data-src={d.src||""} data-date={d.date||""}>
+                <td className="dt-name" title={d.name||""}>{d.name||"—"}</td>
+                <td><span className={"dt-badge "+dtStatusCls(d.status)}>{d.status||"—"}</span></td>
+                <td className="dt-amt">{dtAmount(d.amount)}</td>
+              </tr>
+            ))}
+          </tbody></table>
+        </div>
+      ):null}
+    </div>
+  );
+}
+
 function SalesAnalysis({sales, summary}){
   const data = sales || {};
   const byCreative = data.byCreative || [];
@@ -1583,7 +1749,7 @@ function App(){
     setLoading(true); setWarn(""); setShowWarn(true);
     let s=null,h=null,sa=null,sLive=false,hLive=false,saLive=false;
     try{ s=await jsonpRetry(URL_SUMMARY, 2, 28000); sLive=true; }catch(e){ s=DUMMY_SUMMARY; console.warn("[OWNER'S] summary 取得失敗:", e.message); }
-    try{ h=await jsonp(URL_HISTORY, 15000); hLive=true; }catch(e){ h=DUMMY_HISTORY; console.warn("[OWNER'S] history 取得失敗:", e.message); }
+    try{ h=await jsonpRetry(URL_HISTORY, 2, 28000); hLive=true; }catch(e){ h=DUMMY_HISTORY; console.warn("[OWNER'S] history 取得失敗:", e.message); }
     try{ const raw=await jsonpRetry(URL_SALES, 2, 28000); sa=(raw&&raw.sales)?raw.sales:raw; saLive=true; }catch(e){ sa=DUMMY_SALES.sales; console.warn("[OWNER'S] sales 取得失敗:", e.message); }
     console.log("%c[OWNER'S] type=summary : "+(sLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(sLive?"#16a34a":"#c2820b")+";font-weight:bold");
     console.log("%c[OWNER'S] type=history : "+(hLive?"✅ 実データ取得 成功":"⚠️ 失敗→ダミー使用"),"color:"+(hLive?"#16a34a":"#c2820b")+";font-weight:bold");
@@ -1721,6 +1887,7 @@ function Sidebar({tab, setTab, summary, onReload}){
             <div className="ab-s">代理店</div>
           </div>
         </div>
+        <div className="build-tag" title="デプロイ反映確認用のビルドタグ">{BUILD_TAG}</div>
       </div>
     </div>
   );
