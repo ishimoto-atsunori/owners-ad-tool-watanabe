@@ -1452,7 +1452,7 @@ function AiBResult({d, onRerun}){
 
 // クリエイティブ別 営業実績カード（画像・タイトルは台帳メタから）
 // ▼ボタンB（段階C-2）：上位層AI傾向分析を搭載（手動トリガー・押した時だけ ?type=analyzeB を叩く）
-function SalesCard({s, meta}){
+function SalesCard({s, meta, consultCpa, cpaTarget}){
   const img = (meta && meta.image) || "";
   const [aiState,setAiState]=useState("idle"); // idle|loading|done|error
   const [ai,setAi]=useState(null);
@@ -1475,6 +1475,11 @@ function SalesCard({s, meta}){
       <div className="body">
         <div className="ck">{s.adKey}</div>
         {meta && meta.title? <div className="ctitle">{meta.title}</div>:null}
+
+        {/* ▼説明会申込単価：クリエイティブ一覧タブと同一の値（消化金額÷説明会申込数）。値なし・申込0は「—」 */}
+        <div className="fm-top" style={{gridTemplateColumns:"1fr"}}>
+          <div className="fm-cell"><span>説明会申込単価</span><b className={priceCls(N(consultCpa),cpaTarget)}>{priceVal(N(consultCpa))}</b></div>
+        </div>
 
         <div className="fm-top" style={{gridTemplateColumns:"repeat(2,1fr)"}}>
           <div className="fm-cell"><span>説明会申込</span><b>{cntDash(s.applied)}名</b></div>
@@ -1660,6 +1665,29 @@ function SalesAnalysis({sales, summary}){
   const byStaff = (data.byStaff || []).filter(s=>N(s.applied)>0); // 申込0の担当者は非表示（表示のみ）
   const unknownCount = N(data.unknownCount) || 0;
   const metaMap = useMemo(()=>{ const m={}; ((summary&&summary.creatives)||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[summary]);
+  // ▼説明会申込単価：クリエイティブ一覧タブと同一値（summaryの累計行 consult=消化金額÷申込数 をGASが算出済み）を
+  //   adKeyで突き合わせて表示する。大文字小文字の取りこぼし対策で小文字キーもフォールバック登録。
+  const cpaTarget = (summary && summary.targets && summary.targets.consult) || null;
+  const consultCpaMap = useMemo(()=>{
+    const m={};
+    ((summary && summary.cumulative)||[]).forEach(r=>{
+      const k=r.adKey; if(k==null || k==="") return;
+      const v=N(r.consultCpa);
+      const ks=String(k);
+      if(!(ks in m)) m[ks]=v;
+      const kl=ks.toLowerCase();
+      if(!(kl in m)) m[kl]=v;
+    });
+    return m;
+  },[summary]);
+  const consultCpaOf = (adKey)=>{
+    if(adKey==null) return null;
+    const ks=String(adKey);
+    if(ks in consultCpaMap) return consultCpaMap[ks];
+    const kl=ks.toLowerCase();
+    if(kl in consultCpaMap) return consultCpaMap[kl];
+    return null;
+  };
   const cards = useMemo(()=> byCreative.filter(c=>!isUnknownAdKey(c.adKey)), [byCreative]);
 
   if(!byCreative.length && !byStaff.length){
@@ -1699,7 +1727,7 @@ function SalesAnalysis({sales, summary}){
       <div className="sec-title">クリエイティブ別 営業実績（{cards.length}件）</div>
       {cards.length? (
         <div className="cgrid">
-          {cards.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} />)}
+          {cards.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} consultCpa={consultCpaOf(c.adKey)} cpaTarget={cpaTarget} />)}
         </div>
       ):<div className="empty">クリエイティブ別の営業データがありません</div>}
     </div>
