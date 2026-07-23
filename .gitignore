@@ -12,3 +12,5 @@
 # 手動バックアップHTMLはリポジトリに含めない
 *_backup_*.html
 *_bk_*.html
+# .bak系バックアップ（index.html.bak_YYYYMMDD_HHMM 等）
+*.bak*

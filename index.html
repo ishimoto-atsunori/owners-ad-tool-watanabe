@@ -401,6 +401,15 @@
   .staff-row .sr-stats em{font-style:normal;font-weight:700;}
   .staff-row .sr-stats em.j-muted{color:var(--mute);}
 
+  /* ===== 広告ID検索（クリエイティブ一覧・営業分析・課題回答 共通） ===== */
+  .adq{position:relative;max-width:380px;flex:1 1 240px;margin:0 0 14px;}
+  .adq input{padding-left:36px;padding-right:36px;}
+  .adq .adq-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--mute);display:flex;pointer-events:none;}
+  .adq-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--panel2);border:1px solid var(--line);
+    color:var(--sub);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;
+    display:flex;align-items:center;justify-content:center;padding:0;}
+  .adq-clear:hover{color:var(--ink);border-color:var(--pp);}
+
   /* ===== レスポンシブ（スマホ：サイドバー→上部） ===== */
   @media(max-width:860px){
     .app{flex-direction:column;}
@@ -676,6 +685,26 @@ function salesRateCls(rate){
 }
 // 広告キー不明（空 or「不明」を含む）→ クリエイティブ別カードから除外
 function isUnknownAdKey(k){ const s=String(k||"").trim(); return s==="" || s.indexOf("不明")>=0; }
+
+/* ===== 広告ID検索（クリエイティブ一覧・営業分析・課題回答で共有） ===== */
+// 正規化：全角英数→半角、全角スペース→半角、前後trim、小文字化。検索語・adKey双方に適用して部分一致。
+function normAdKey(s){
+  return String(s==null?"":s)
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0))
+    .replace(/　/g," ")
+    .trim().toLowerCase();
+}
+function adKeyHit(adKey, nq){ return !nq || normAdKey(adKey).indexOf(nq)>=0; }
+// 検索入力ボックス（リアルタイム絞り込み・×でクリア）。状態はApp保持＝3タブで共有。
+function AdKeySearch({q, setQ}){
+  return (
+    <div className="adq">
+      <span className="adq-ic"><Icon name="search" size={15} /></span>
+      <input type="text" placeholder="広告IDで検索（例：ad0020）" value={q} onChange={e=>setQ(e.target.value)} />
+      {q? <button className="adq-clear" title="検索をクリア" onClick={()=>setQ("")}>×</button> : null}
+    </div>
+  );
+}
 // 総売上 = OWNER'S(revenue) + セルフ + サロン
 function totalRevenueOf(row){ return (N(row.revenue)||0)+(N(row.selfstudyRevenue)||0)+(N(row.salonRevenue)||0); }
 // 旧プラン成約数 = 成約 − Light − Premium − Black（JSONに専用キーが無いため引き算。負にしない）
@@ -1102,7 +1131,7 @@ function FunnelCard({row, meta, targets, isDaily, period}){
   );
 }
 
-function Creatives({data}){
+function Creatives({data, adQ, setAdQ}){
   const fmtD=(d)=>{const z=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
   const [period,setPeriod]=useState("cumulative");
   const [filter,setFilter]=useState("all");
@@ -1147,6 +1176,9 @@ function Creatives({data}){
     else if(PRICE_SORTS.indexOf(sort)>=0) v.sort((a,b)=>cmpInvalidLast(priceKey(a.row[sort]), priceKey(b.row[sort]), "asc"));
     return v;
   },[enriched,filter,sort]);
+  // ▼広告ID検索（3タブ共有）：既存フィルタ・ソートの後段で adKey 部分一致に絞る
+  const nq = normAdKey(adQ);
+  const shown = useMemo(()=> nq? view.filter(x=>adKeyHit(x.row.adKey, nq)) : view, [view, nq]);
 
   let body;
   if(isCustom && (cState==="loading"||cState==="idle")){
@@ -1154,11 +1186,11 @@ function Creatives({data}){
   } else if(isCustom && cState==="error"){
     body = <div className="empty">{cErr||"取得に失敗しました"}<button className="reload" style={{marginLeft:8}} onClick={loadReport}>↻ 再試行</button></div>;
   } else {
-    body = view.length? (
+    body = shown.length? (
       <div className="cgrid">
-        {view.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} />)}
+        {shown.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} />)}
       </div>
-    ):<div className="empty">該当するクリエイティブはありません</div>;
+    ):<div className="empty">{nq? "該当する広告IDがありません" : "該当するクリエイティブはありません"}</div>;
   }
 
   return (
@@ -1194,8 +1226,9 @@ function Creatives({data}){
           <option value="consultCpa">並替：説明会申込単価が安い順</option>
           <option value="closeCpa">並替：成約単価が安い順</option>
         </select>
-        <span className="count">{view.length}件（{labels[period]}）</span>
+        <span className="count">{nq? (shown.length+"件 / 全"+view.length+"件") : (view.length+"件（"+labels[period]+"）")}</span>
       </div>
+      <AdKeySearch q={adQ} setQ={setAdQ} />
       {isCustom? (
         <div className="cohort-note">※選択期間に<b>友だち追加された人</b>のファネル到達状況（成約日ではなく<b>友だち追加日</b>で集計するコホート方式）。消化金額のみ実際の消化日ベース。</div>
       ):null}
@@ -1545,7 +1578,7 @@ function AnswerPerson({p}){
   );
 }
 
-function AnswersViewer({answers, summary, state, onRetry}){
+function AnswersViewer({answers, summary, state, onRetry, adQ, setAdQ}){
   const [sel,setSel]=useState(null);
   const metaMap=useMemo(()=>{ const m={}; ((summary&&summary.creatives)||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[summary]);
   const byCreative=(answers&&answers.byCreative)||{};
@@ -1553,6 +1586,9 @@ function AnswersViewer({answers, summary, state, onRetry}){
     const list=byCreative[adKey]||[];
     return { adKey, meta:metaMap[adKey]||{}, count:list.length, withAns:list.filter(p=>p.hasAnswer).length };
   }).sort((a,b)=> (b.withAns-a.withAns) || (b.count-a.count)), [byCreative,metaMap]);
+  // ▼広告ID検索（3タブ共有）：一覧ビューのカードのみ絞り込み（選択後の個人回答ビューは対象外）
+  const nq = normAdKey(adQ);
+  const shown = useMemo(()=> nq? cards.filter(c=>adKeyHit(c.adKey, nq)) : cards, [cards, nq]);
 
   if(state==="loading" || (state==="idle")){
     return <div className="loadwrap"><div className="spin"></div>課題回答を読み込み中…</div>;
@@ -1589,12 +1625,13 @@ function AnswersViewer({answers, summary, state, onRetry}){
   // ▼一覧：クリエイティブ画像カード
   return (
     <div>
+      <AdKeySearch q={adQ} setQ={setAdQ} />
       <div className="meta-line" style={{marginTop:0}}>
-        クリエイティブ {cards.length}件 / 回答者 {(answers&&answers.personCount)||0}名 — カードを選ぶとDay回答が見られます
+        {nq? ("クリエイティブ "+shown.length+"件 / 全"+cards.length+"件") : ("クリエイティブ "+cards.length+"件")} / 回答者 {(answers&&answers.personCount)||0}名 — カードを選ぶとDay回答が見られます
       </div>
-      {cards.length? (
+      {shown.length? (
         <div className="agrid">
-          {cards.map(c=>(
+          {shown.map(c=>(
             <button className="acard" key={c.adKey} onClick={()=>setSel(c.adKey)}>
               <KV src={c.meta.image||""} alt={c.adKey} />
               <div className="abody">
@@ -1605,7 +1642,7 @@ function AnswersViewer({answers, summary, state, onRetry}){
             </button>
           ))}
         </div>
-      ):<div className="empty">課題回答データがありません</div>}
+      ):<div className="empty">{nq? "該当する広告IDがありません" : "課題回答データがありません"}</div>}
     </div>
   );
 }
@@ -1659,7 +1696,7 @@ function StaffDetails({details}){
   );
 }
 
-function SalesAnalysis({sales, summary}){
+function SalesAnalysis({sales, summary, adQ, setAdQ}){
   const data = sales || {};
   const byCreative = data.byCreative || [];
   const byStaff = (data.byStaff || []).filter(s=>N(s.applied)>0); // 申込0の担当者は非表示（表示のみ）
@@ -1689,6 +1726,9 @@ function SalesAnalysis({sales, summary}){
     return null;
   };
   const cards = useMemo(()=> byCreative.filter(c=>!isUnknownAdKey(c.adKey)), [byCreative]);
+  // ▼広告ID検索（3タブ共有）：クリエイティブ別カードのみ絞り込み（担当者別サマリーはadKeyを持たないため対象外）
+  const nq = normAdKey(adQ);
+  const shown = useMemo(()=> nq? cards.filter(c=>adKeyHit(c.adKey, nq)) : cards, [cards, nq]);
 
   if(!byCreative.length && !byStaff.length){
     return <div className="empty">営業データがありません</div>;
@@ -1717,19 +1757,20 @@ function SalesAnalysis({sales, summary}){
         </div>
       ):null}
 
-      {unknownCount? (
+      {unknownCount && !nq? (
         <div className="sales-note">
           <Icon name="triangle-alert" size={15} />
           広告外経由（オーガニック等）：{comma(unknownCount)} 件　※広告キー不明のため、クリエイティブ別カードには含めていません
         </div>
       ):null}
 
-      <div className="sec-title">クリエイティブ別 営業実績（{cards.length}件）</div>
-      {cards.length? (
+      <AdKeySearch q={adQ} setQ={setAdQ} />
+      <div className="sec-title">クリエイティブ別 営業実績（{nq? (shown.length+"件 / 全"+cards.length+"件") : (cards.length+"件")}）</div>
+      {shown.length? (
         <div className="cgrid">
-          {cards.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} consultCpa={consultCpaOf(c.adKey)} cpaTarget={cpaTarget} />)}
+          {shown.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} consultCpa={consultCpaOf(c.adKey)} cpaTarget={cpaTarget} />)}
         </div>
-      ):<div className="empty">クリエイティブ別の営業データがありません</div>}
+      ):<div className="empty">{nq? "該当する広告IDがありません" : "クリエイティブ別の営業データがありません"}</div>}
     </div>
   );
 }
@@ -1772,6 +1813,8 @@ function App(){
   const [source,setSource]=useState({summary:false, history:false, sales:false});
   const [running,setRunning]=useState(false); // 手動更新（updateAll）実行中
   const [runMsg,setRunMsg]=useState("");       // 手動更新の失敗メッセージ
+  // ▼広告ID検索語（クリエイティブ一覧・課題回答・営業分析の3タブで共有。タブ切替でも維持、×で3タブ同時解除）
+  const [adQuery,setAdQuery]=useState("");
 
   async function load(){
     setLoading(true); setWarn(""); setShowWarn(true);
@@ -1873,9 +1916,9 @@ function App(){
           </div>
 
           {tab==="dash"   && <Dashboard data={summary} />}
-          {tab==="crea"   && <Creatives data={summary} />}
-          {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} />}
-          {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} />}
+          {tab==="crea"   && <Creatives data={summary} adQ={adQuery} setAdQ={setAdQuery} />}
+          {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} adQ={adQuery} setAdQ={setAdQuery} />}
+          {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} adQ={adQuery} setAdQ={setAdQuery} />}
           {tab==="hist"   && <History history={history} summary={summary} />}
           {tab==="search" && <Search data={summary} />}
         </div>
