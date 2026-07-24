@@ -410,6 +410,48 @@
     display:flex;align-items:center;justify-content:center;padding:0;}
   .adq-clear:hover{color:var(--ink);border-color:var(--pp);}
 
+  /* ===== テスト予定タブ ===== */
+  .tp-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;}
+  .tp-add{background:var(--pp);color:#fff;border:none;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;font-size:13px;}
+  .tp-add:hover{background:var(--pp2);}
+  .tp-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);cursor:pointer;user-select:none;}
+  .tp-msg{font-size:12px;font-weight:700;color:var(--sub);}
+  .tp-msg.ok{color:var(--green);} .tp-msg.err{color:var(--red);}
+  .tp-list{display:flex;flex-direction:column;gap:10px;}
+  .tp-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;display:flex;gap:12px;align-items:flex-start;}
+  .tp-card.dragging{opacity:.45;}
+  .tp-card.dragover{outline:2px dashed var(--pp);outline-offset:2px;}
+  .tp-grip{cursor:grab;color:var(--mute);font-size:16px;line-height:1;padding:4px 2px;flex-shrink:0;user-select:none;}
+  .tp-body{flex:1;min-width:0;}
+  .tp-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .tp-badge{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .tp-badge.st-todo{background:var(--amber-bg);color:var(--amber);}
+  .tp-badge.st-doing{background:var(--green-bg);color:var(--green);}
+  .tp-badge.st-done{background:var(--pp-soft);color:var(--pp2);}
+  .tp-badge.st-skip{background:var(--panel2);color:var(--mute);}
+  .tp-title{font-size:14px;font-weight:800;color:var(--ink);}
+  .tp-meta{font-size:11px;color:var(--sub);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;}
+  .tp-hypo{font-size:12px;color:var(--sub);margin-top:6px;cursor:pointer;white-space:pre-wrap;word-break:break-word;}
+  .tp-hypo:hover{color:var(--ink);}
+  .tp-actions{display:flex;gap:6px;flex-shrink:0;}
+  .tp-btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:11.5px;color:var(--sub);cursor:pointer;font-weight:700;white-space:nowrap;}
+  .tp-btn:hover{color:var(--ink);border-color:var(--pp);}
+  .tp-btn.danger:hover{color:var(--red);border-color:var(--red);}
+  .tp-overlay{position:fixed;inset:0;background:rgba(20,24,60,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .tp-modal{background:var(--panel);border-radius:var(--r);box-shadow:var(--shadow-card);width:min(560px,100%);max-height:90vh;overflow-y:auto;padding:20px 22px;}
+  .tp-modal h3{font-size:15px;margin:0 0 14px;color:var(--ink);}
+  .tp-form{display:flex;flex-direction:column;gap:10px;}
+  .tp-field label{display:block;font-size:11px;font-weight:800;color:var(--sub);margin-bottom:4px;}
+  .tp-field input,.tp-field select,.tp-field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--ink);background:var(--panel);font-family:inherit;}
+  .tp-field textarea{min-height:72px;resize:vertical;}
+  .tp-field input:focus,.tp-field select:focus,.tp-field textarea:focus{outline:none;border-color:var(--pp);}
+  .tp-req{color:var(--red);}
+  .tp-modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .tp-cancel{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 16px;font-size:13px;color:var(--sub);cursor:pointer;font-weight:700;}
+  .tp-save{background:var(--pp);border:none;border-radius:10px;padding:9px 18px;font-size:13px;color:#fff;cursor:pointer;font-weight:800;}
+  .tp-save:disabled{opacity:.5;cursor:default;}
+  .tp-form-err{font-size:12px;color:var(--red);font-weight:700;}
+
   /* ===== レスポンシブ（スマホ：サイドバー→上部） ===== */
   @media(max-width:860px){
     .app{flex-direction:column;}
@@ -437,7 +479,7 @@
 <script src="./vendor/babel.min.js"></script>
 
 <script type="text/babel">
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 /* ============================================================
    Lucide アイコン（ISCライセンス／インラインSVG・外部CDN非依存）
@@ -488,10 +530,11 @@ const URL_HISTORY = API + "?type=history";
 const URL_RUN     = API + "?type=run"; // updateAll() を手動実行
 const URL_SALES   = API + "?type=sales"; // 営業分析データ
 const URL_ANSWERS = API + "?type=answers"; // 課題回答（クリエイティブ別・遅延取得）
+const URL_TESTPLAN = API + "?type=testplan"; // テスト予定（一覧）
 
 // ▼ビルドタグ：いま開いているページがどの版かを即判別するための表示（サイドバー最下部＋起動時コンソール）。
 //   デプロイ反映確認用。ボタンBが見えない等の際は、まずこの表記が最新かを確認する（古ければキャッシュか別ページ）。
-const BUILD_TAG = "build 2026-07-15 / 営業明細UI搭載版（渡辺）";
+const BUILD_TAG = "build 2026-07-24 / テスト予定タブ（渡辺版）";
 console.log("%c[OWNER'S] " + BUILD_TAG, "color:#6c4cf0;font-weight:bold");
 
 /* ============================================================
@@ -596,6 +639,23 @@ async function jsonpRetry(url, tries, ms){
     try{ return await jsonp(url, ms); }catch(e){ last=e; }
   }
   throw last;
+}
+
+/* ============================================================
+   テスト予定：書き込み送信
+   fetch POST（Content-Type: text/plain;charset=utf-8 ＝単純リクエスト→CORSプリフライト無し）。
+   GAS側は doPost の e.postData.contents で受信。
+   POSTが通らない環境ではJSONP GET（?type=testplanwrite&payload=...）へ自動フォールバック。
+============================================================ */
+async function postTestPlanWrite(body){
+  try{
+    const res = await fetch(API, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(body) });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    return await res.json();
+  }catch(e){
+    console.warn("[OWNER'S] testplan POST失敗→JSONPフォールバック:", e.message);
+    return await jsonp(API + "?type=testplanwrite&payload=" + encodeURIComponent(JSON.stringify(body)) + "&_=" + Date.now(), 28000);
+  }
 }
 
 /* ============================================================
@@ -1791,10 +1851,212 @@ function SourceBadge({source}){
 /* ============================================================
    ルート App（左サイドバー構成）
 ============================================================ */
+/* ============================================================
+   テスト予定タブ（広告テスト案の登録・編集・削除・並び替え）
+   認証なし：閲覧・書き込みともキー不要（ツールにアクセスできる人は誰でも編集可）。
+============================================================ */
+const TP_STATUSES=["未着手","実施中","完了","見送り"];
+const TP_BADGE={"未着手":"st-todo","実施中":"st-doing","完了":"st-done","見送り":"st-skip"};
+
+function TestPlanEditModal({item,busy,onSave,onCancel}){
+  const [f,setF]=useState({
+    status:item?item.status:"未着手", title:item?item.title:"", category:item?item.category:"",
+    hypothesis:item?item.hypothesis:"", creativePlan:item?item.creativePlan:"", owner:item?item.owner:"",
+    adKeys:item?item.adKeys:"", memo:item?item.memo:"",
+  });
+  const [err,setErr]=useState("");
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  function submit(){
+    if(!f.title.trim()){ setErr("テスト名は必須です"); return; }
+    setErr("");
+    onSave({...f, title:f.title.trim()});
+  }
+  return (
+    <div className="tp-overlay" onClick={busy?null:onCancel}>
+      <div className="tp-modal" onClick={e=>e.stopPropagation()}>
+        <h3>{item? "テスト案を編集" : "テスト案を追加"}</h3>
+        <div className="tp-form">
+          {err? <div className="tp-form-err">{err}</div> : null}
+          <div className="tp-field"><label>テスト名 <span className="tp-req">※必須</span></label>
+            <input type="text" value={f.title} onChange={e=>set("title",e.target.value)} placeholder="例：趣味系LPの新訴求テスト" /></div>
+          <div className="tp-field"><label>ステータス</label>
+            <select value={f.status} onChange={e=>set("status",e.target.value)}>{TP_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+          <div className="tp-field"><label>カテゴリ</label>
+            <input type="text" value={f.category} onChange={e=>set("category",e.target.value)} placeholder="例：趣味系" /></div>
+          <div className="tp-field"><label>狙い・仮説</label>
+            <textarea value={f.hypothesis} onChange={e=>set("hypothesis",e.target.value)} /></div>
+          <div className="tp-field"><label>作るクリエイティブの内容</label>
+            <textarea value={f.creativePlan} onChange={e=>set("creativePlan",e.target.value)} /></div>
+          <div className="tp-field"><label>担当</label>
+            <input type="text" value={f.owner} onChange={e=>set("owner",e.target.value)} /></div>
+          <div className="tp-field"><label>広告ID（実施後に紐づけ・カンマ区切り）</label>
+            <input type="text" value={f.adKeys} onChange={e=>set("adKeys",e.target.value)} placeholder="例：k1-setladys2-ad0020-1f, k1-setladys2-ad0021-2f" /></div>
+          <div className="tp-field"><label>メモ</label>
+            <textarea value={f.memo} onChange={e=>set("memo",e.target.value)} /></div>
+        </div>
+        <div className="tp-modal-foot">
+          <button className="tp-cancel" onClick={onCancel} disabled={busy}>キャンセル</button>
+          <button className="tp-save" onClick={submit} disabled={busy}>{busy? "保存中…" : "保存"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TestPlan(){
+  const [items,setItems]=useState(null);        // 全件（order昇順）
+  const [state,setState]=useState("loading");   // loading|done|error
+  const [showClosed,setShowClosed]=useState(false);
+  const [expanded,setExpanded]=useState({});    // id→true：仮説の全文表示
+  const [msg,setMsg]=useState(null);            // {text, kind:"info"|"ok"|"err"}
+  const [modal,setModal]=useState(null);        // null | {item:null(新規)|編集対象}
+  const [modalBusy,setModalBusy]=useState(false);
+  const [dragId,setDragId]=useState(null);
+  const [overId,setOverId]=useState(null);
+  const msgTimer=useRef(null);
+
+  function flashMsg(text,kind){
+    setMsg({text,kind});
+    if(msgTimer.current) clearTimeout(msgTimer.current);
+    if(kind!=="err") msgTimer.current=setTimeout(()=>setMsg(null), 2500);
+  }
+
+  async function load(){
+    setState("loading");
+    try{
+      const raw=await jsonpRetry(URL_TESTPLAN + "&_=" + Date.now(), 2, 28000);
+      setItems((raw&&raw.testPlans)||[]);
+      setState("done");
+    }catch(e){
+      console.warn("[OWNER'S] testplan 取得失敗:", e.message);
+      setState("error");
+    }
+  }
+  useEffect(()=>{ load(); },[]);
+
+  // 書き込み共通：認証なし（キー入力・キー送信なし）。通信エラーは ok:false に変換して返す
+  async function write(body){
+    try{
+      return await postTestPlanWrite(body);
+    }catch(e){
+      console.warn("[OWNER'S] testplan 書き込み失敗:", e.message);
+      return { ok:false, error:"通信に失敗しました" };
+    }
+  }
+
+  async function saveItem(fields){
+    setModalBusy(true);
+    const editing=modal&&modal.item;
+    let res=null;
+    try{
+      res=await write(editing? {action:"update",id:editing.id,...fields} : {action:"add",...fields});
+    }finally{
+      setModalBusy(false);
+    }
+    if(!res||!res.ok){ flashMsg("保存に失敗しました："+((res&&res.error)||"不明なエラー"),"err"); return; } // モーダル維持＝入力内容保持
+    setModal(null);
+    flashMsg("保存しました","ok");
+    await load();
+  }
+
+  async function removeItem(it){
+    if(!window.confirm("このテスト案を削除しますか？\n「"+it.title+"」")) return;
+    flashMsg("保存中…","info");
+    const res=await write({action:"delete",id:it.id});
+    if(!res||!res.ok){ flashMsg("削除に失敗しました："+((res&&res.error)||"不明なエラー"),"err"); return; }
+    flashMsg("保存しました","ok");
+    await load();
+  }
+
+  // D&D並び替え：確定時に全件のorderを一括保存。失敗時は元の並びへロールバック
+  async function persistOrder(next){
+    const prev=items;
+    setItems(next);
+    flashMsg("保存中…","info");
+    const res=await write({action:"reorder",orders:next.map((it,i)=>({id:it.id,order:i+1}))});
+    if(!res||!res.ok){
+      setItems(prev);
+      flashMsg("並び替えの保存に失敗しました。元の並びに戻しました","err");
+      return;
+    }
+    flashMsg("保存しました","ok");
+  }
+  function handleDrop(targetId){
+    if(dragId==null||dragId===targetId){ setDragId(null); setOverId(null); return; }
+    const list=items.slice();
+    const from=list.findIndex(x=>x.id===dragId);
+    const to=list.findIndex(x=>x.id===targetId);
+    setDragId(null); setOverId(null);
+    if(from<0||to<0) return;
+    const moved=list.splice(from,1)[0];
+    list.splice(to,0,moved);
+    persistOrder(list);
+  }
+
+  const visible=(items||[]).filter(it=> showClosed ? true : (it.status==="未着手"||it.status==="実施中"));
+
+  if(state==="loading") return <div className="loadwrap"><div className="spin"></div>テスト予定を読み込み中…</div>;
+  if(state==="error") return <div className="empty">テスト予定の取得に失敗しました。<button className="reload" style={{marginLeft:8}} onClick={load}>↻ 再試行</button></div>;
+
+  return (
+    <div>
+      <div className="tp-toolbar">
+        <button className="tp-add" onClick={()=>setModal({item:null})}>＋ テスト案を追加</button>
+        <label className="tp-toggle">
+          <input type="checkbox" checked={showClosed} onChange={e=>setShowClosed(e.target.checked)} />
+          完了・見送りも表示
+        </label>
+        {msg? <span className={"tp-msg"+(msg.kind==="ok"?" ok":msg.kind==="err"?" err":"")}>{msg.text}</span> : null}
+      </div>
+      {visible.length===0 ? (
+        <div className="empty">{(items||[]).length===0? "テスト予定がまだ登録されていません" : "表示できるテスト案がありません（「完了・見送りも表示」で確認できます）"}</div>
+      ):(
+        <div className="tp-list">
+          {visible.map(it=>(
+            <div key={it.id}
+              className={"tp-card"+(dragId===it.id?" dragging":"")+(overId===it.id&&dragId!==it.id?" dragover":"")}
+              draggable
+              onDragStart={e=>{ setDragId(it.id); e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/plain",it.id); }catch(err){} }}
+              onDragEnd={()=>{ setDragId(null); setOverId(null); }}
+              onDragOver={e=>{ e.preventDefault(); e.dataTransfer.dropEffect="move"; if(overId!==it.id) setOverId(it.id); }}
+              onDragLeave={()=>{ if(overId===it.id) setOverId(null); }}
+              onDrop={e=>{ e.preventDefault(); handleDrop(it.id); }}>
+              <span className="tp-grip" title="ドラッグで並び替え">⠿</span>
+              <div className="tp-body">
+                <div className="tp-head">
+                  <span className={"tp-badge "+(TP_BADGE[it.status]||"st-todo")}>{it.status}</span>
+                  <span className="tp-title">{it.title}</span>
+                </div>
+                <div className="tp-meta">
+                  {it.category? <span>カテゴリ：{it.category}</span> : null}
+                  {it.owner? <span>担当：{it.owner}</span> : null}
+                  {it.adKeys? <span>広告ID：{it.adKeys}</span> : null}
+                </div>
+                {it.hypothesis? (
+                  <div className="tp-hypo" title="クリックで全文表示/折りたたみ"
+                    onClick={()=>setExpanded(p=>({...p,[it.id]:!p[it.id]}))}>
+                    {expanded[it.id]||it.hypothesis.length<=60 ? it.hypothesis : it.hypothesis.slice(0,60)+"…"}
+                  </div>
+                ):null}
+              </div>
+              <div className="tp-actions">
+                <button className="tp-btn" onClick={()=>setModal({item:it})}>編集</button>
+                <button className="tp-btn danger" onClick={()=>removeItem(it)}>削除</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {modal? <TestPlanEditModal item={modal.item} busy={modalBusy} onSave={saveItem} onCancel={()=>{ if(!modalBusy) setModal(null); }} /> : null}
+    </div>
+  );
+}
+
 const TABS=[
   {id:"dash", icon:"layout-dashboard", label:"ダッシュボード"},
   {id:"crea", icon:"images", label:"クリエイティブ一覧"},
   {id:"answers", icon:"file-text", label:"課題回答"},
+  {id:"testplan", icon:"calendar-check", label:"テスト予定"},
   {id:"sales", icon:"handshake", label:"営業分析"},
   {id:"hist", icon:"line-chart", label:"7日間履歴"},
   {id:"search", icon:"search", label:"検索"},
@@ -1918,6 +2180,7 @@ function App(){
           {tab==="dash"   && <Dashboard data={summary} />}
           {tab==="crea"   && <Creatives data={summary} adQ={adQuery} setAdQ={setAdQuery} />}
           {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} adQ={adQuery} setAdQ={setAdQuery} />}
+          {tab==="testplan"&& <TestPlan />}
           {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} adQ={adQuery} setAdQ={setAdQuery} />}
           {tab==="hist"   && <History history={history} summary={summary} />}
           {tab==="search" && <Search data={summary} />}
