@@ -166,6 +166,7 @@
   .cc .kv.ph{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:12px;}
   .cc .body{padding:15px;display:flex;flex-direction:column;gap:10px;flex:1;}
   .ck{font-size:12px;color:var(--blue);word-break:break-all;font-weight:700;font-family:ui-monospace,monospace;}
+  .ck-date{font-size:10px;color:var(--mute);font-weight:700;margin-left:6px;white-space:nowrap;}
   .ctitle{font-size:14px;font-weight:700;line-height:1.45;color:var(--ink);}
   .pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:4px 11px;border-radius:999px;width:fit-content;border:1px solid transparent;}
   .pill.on{background:#fdf3d0;color:#876a00;border-color:#efd98c;}
@@ -575,7 +576,7 @@ const URL_TAGS    = API + "?type=tags"; // タグ管理（クリエイティブ�
 
 // ▼ビルドタグ：いま開いているページがどの版かを即判別するための表示（サイドバー最下部＋起動時コンソール）。
 //   デプロイ反映確認用。ボタンBが見えない等の際は、まずこの表記が最新かを確認する（古ければキャッシュか別ページ）。
-const BUILD_TAG = "build 2026-07-25 / タグ機能3タブ対応版（渡辺版）";
+const BUILD_TAG = "build 2026-07-25 / 配信開始日ソート対応版（渡辺版）";
 console.log("%c[OWNER'S] " + BUILD_TAG, "color:#6c4cf0;font-weight:bold");
 
 /* ============================================================
@@ -836,6 +837,18 @@ function scoreKey(s){
   if(!m) return null;
   const num=Number(m[1]), den=Number(m[2]);
   return den>0 ? num/den : null;
+}
+// 配信開始日（クリエイティブ台帳B列・実体はMetaのcreated_time）：数字のみを抽出して14桁数値化。
+// 例 "2026-07-15 00:00:00"→20260715000000。"yyyy-MM-dd"のみでも右0埋めで対応。取れなければ null（末尾扱い）。
+// ブラウザ依存の Date.parse を使わない決定論的キー。
+function startKey(meta){
+  const d=String(((meta||{}).startDate)||"").replace(/\D/g,"");
+  return d.length>=8 ? Number(d.slice(0,14).padEnd(14,"0")) : null;
+}
+// カード表示用：配信開始日を yyyy/MM/dd に整形。値が無い/形式外なら空文字（何も表示しない）
+function startDateDisp(meta){
+  const m=String(((meta||{}).startDate)||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m? (m[1]+"/"+m[2]+"/"+m[3]) : "";
 }
 // 無効値(null)を必ず末尾に固定する比較。dir:"asc"=小さいほど上 / "desc"=大きいほど上
 function cmpInvalidLast(av, bv, dir){
@@ -1402,7 +1415,7 @@ function FunnelCard({row, meta, targets, isDaily, period, tagList, allTagNames, 
       <KV src={img} alt={row.adKey} />
       <div className="body">
         <span className={"pill "+si.cls}>{si.label}</span>
-        <div className="ck">{row.adKey}</div>
+        <div className="ck">{row.adKey}{startDateDisp(meta)? <span className="ck-date">入稿 {startDateDisp(meta)}</span> : null}</div>
         {meta&&meta.title? <div className="ctitle">{meta.title}</div>:null}
 
         {onTagAdd? <TagRow adKey={row.adKey} tagList={tagList||[]} allTagNames={allTagNames||[]} onAdd={onTagAdd} onRemove={onTagRemove} /> : null}
@@ -1515,6 +1528,7 @@ function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry
     if(sort==="status") v.sort((a,b)=>statusRank(a.row.status)-statusRank(b.row.status));
     else if(sort==="spend") v.sort((a,b)=>(N(b.row.spend)||0)-(N(a.row.spend)||0));
     else if(sort==="date") v.sort((a,b)=>String((b.meta||{}).startDate||"").localeCompare(String((a.meta||{}).startDate||"")));
+    else if(sort==="startOld") v.sort((a,b)=>cmpInvalidLast(startKey(a.meta), startKey(b.meta), "asc") || String(a.row.adKey||"").localeCompare(String(b.row.adKey||"")));
     else if(sort==="score") v.sort((a,b)=>cmpInvalidLast(scoreKey(a.row.score), scoreKey(b.row.score), "desc"));
     else if(PRICE_SORTS.indexOf(sort)>=0) v.sort((a,b)=>cmpInvalidLast(priceKey(a.row[sort]), priceKey(b.row[sort]), "asc"));
     return v;
@@ -1572,7 +1586,8 @@ function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry
         <select value={sort} onChange={e=>setSort(e.target.value)}>
           <option value="status">並替：ステータス順</option>
           <option value="spend">並替：消化金額が多い順</option>
-          <option value="date">並替：開始日が新しい順</option>
+          <option value="date">並替：配信開始が新しい順</option>
+          <option value="startOld">並替：配信開始が古い順</option>
           <option value="score">並替：スコアが高い順</option>
           <option value="cpa">並替：CPAが安い順</option>
           <option value="day1Cpa">並替：Day1単価が安い順</option>
