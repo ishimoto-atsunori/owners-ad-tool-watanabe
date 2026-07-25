@@ -299,6 +299,7 @@
   .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
   .acard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;transition:border-color .15s,box-shadow .15s;}
   .acard:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(0,0,0,.06);}
+  .acard:focus-visible{outline:2px solid var(--pp);outline-offset:2px;}
   .acard .kv{width:100%;aspect-ratio:1/1;background:var(--panel2);object-fit:cover;display:block;}
   .acard .kv.ph{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:12px;}
   .acard .abody{padding:10px 11px;display:flex;flex-direction:column;gap:4px;}
@@ -452,6 +453,45 @@
   .tp-save:disabled{opacity:.5;cursor:default;}
   .tp-form-err{font-size:12px;color:var(--red);font-weight:700;}
 
+  /* ===== タグ機能（クリエイティブ一覧） ===== */
+  .tagrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 2px;}
+  .tagchip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap;}
+  .tagchip-x{background:none;border:none;cursor:pointer;font-size:12px;line-height:1;padding:0 0 0 2px;opacity:.7;}
+  .tagchip-x:hover{opacity:1;}
+  .tagadd-wrap{position:relative;display:inline-flex;}
+  .tagadd-btn{background:var(--panel2);border:1px dashed var(--line);border-radius:999px;padding:3px 10px;font-size:10.5px;font-weight:800;color:var(--sub);cursor:pointer;}
+  .tagadd-btn:hover{color:var(--pp);border-color:var(--pp);}
+  .tagpop-veil{position:fixed;inset:0;z-index:49;}
+  .tagpop{position:absolute;left:0;top:calc(100% + 6px);z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-card);padding:10px;width:230px;display:flex;flex-direction:column;gap:8px;}
+  .tagpop input{width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--ink);background:var(--panel);font-family:inherit;}
+  .tagpop input:focus{outline:none;border-color:var(--pp);}
+  .tagpop-new{background:var(--pp-soft);border:none;border-radius:8px;padding:7px 8px;font-size:11.5px;font-weight:800;color:var(--pp2);cursor:pointer;text-align:left;}
+  .tagpop-new:hover{background:var(--pp);color:#fff;}
+  .tagpop-list{display:flex;flex-direction:column;gap:2px;max-height:180px;overflow-y:auto;}
+  .tagpop-item{display:flex;align-items:center;gap:7px;background:none;border:none;border-radius:8px;padding:6px 8px;font-size:12px;color:var(--ink);cursor:pointer;text-align:left;}
+  .tagpop-item:hover{background:var(--panel2);}
+  .tagpop-item i{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .tagpop-empty{font-size:11px;color:var(--mute);}
+  .tagpop-note{font-size:10px;color:var(--mute);line-height:1.5;border-top:1px solid var(--line);padding-top:6px;}
+  .tagbar-wrap{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;}
+  .tagbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 14px;padding-top:6px;}
+  .tagbar-label{font-size:11px;font-weight:800;color:var(--sub);}
+  .tagbar-note{font-size:11px;color:var(--mute);display:inline-flex;align-items:center;}
+  .tagf-btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:11px;font-weight:800;color:var(--sub);cursor:pointer;}
+  .tagf-btn i{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .tagf-btn:hover{border-color:var(--pp);color:var(--ink);}
+  .tagf-btn.on{box-shadow:0 0 0 1px currentColor inset;}
+  .tagf-clear{background:none;border:none;font-size:11px;font-weight:800;color:var(--pp2);cursor:pointer;text-decoration:underline;padding:4px 2px;}
+  .tagf-manage{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:11px;font-weight:800;color:var(--sub);cursor:pointer;}
+  .tagf-manage:hover{color:var(--ink);border-color:var(--pp);}
+  .tg-list{display:flex;flex-direction:column;gap:8px;}
+  .tg-row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;}
+  .tg-count{font-size:11px;color:var(--sub);font-weight:700;flex:1;}
+  .tg-input{flex:1;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12.5px;color:var(--ink);background:var(--panel);font-family:inherit;}
+  .tg-input:focus{outline:none;border-color:var(--pp);}
+  .tg-actions{display:flex;gap:6px;margin-left:auto;}
+  .tg-none{font-size:12px;color:var(--sub);}
+
   /* ===== レスポンシブ（スマホ：サイドバー→上部） ===== */
   @media(max-width:860px){
     .app{flex-direction:column;}
@@ -531,10 +571,11 @@ const URL_RUN     = API + "?type=run"; // updateAll() を手動実行
 const URL_SALES   = API + "?type=sales"; // 営業分析データ
 const URL_ANSWERS = API + "?type=answers"; // 課題回答（クリエイティブ別・遅延取得）
 const URL_TESTPLAN = API + "?type=testplan"; // テスト予定（一覧）
+const URL_TAGS    = API + "?type=tags"; // タグ管理（クリエイティブ×タグの紐づけ一覧・遅延取得）
 
 // ▼ビルドタグ：いま開いているページがどの版かを即判別するための表示（サイドバー最下部＋起動時コンソール）。
 //   デプロイ反映確認用。ボタンBが見えない等の際は、まずこの表記が最新かを確認する（古ければキャッシュか別ページ）。
-const BUILD_TAG = "build 2026-07-24 / テスト予定タブ（渡辺版）";
+const BUILD_TAG = "build 2026-07-25 / タグ機能3タブ対応版（渡辺版）";
 console.log("%c[OWNER'S] " + BUILD_TAG, "color:#6c4cf0;font-weight:bold");
 
 /* ============================================================
@@ -655,6 +696,22 @@ async function postTestPlanWrite(body){
   }catch(e){
     console.warn("[OWNER'S] testplan POST失敗→JSONPフォールバック:", e.message);
     return await jsonp(API + "?type=testplanwrite&payload=" + encodeURIComponent(JSON.stringify(body)) + "&_=" + Date.now(), 28000);
+  }
+}
+
+/* ============================================================
+   タグ管理：書き込み送信（テスト予定と同方式）
+   fetch POST（text/plain＝単純リクエスト）→ 失敗時はJSONP GET
+   （?type=tagwrite&payload=...）へ自動フォールバック。
+============================================================ */
+async function postTagWrite(body){
+  try{
+    const res = await fetch(API, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(body) });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    return await res.json();
+  }catch(e){
+    console.warn("[OWNER'S] tag POST失敗→JSONPフォールバック:", e.message);
+    return await jsonp(API + "?type=tagwrite&payload=" + encodeURIComponent(JSON.stringify(body)) + "&_=" + Date.now(), 28000);
   }
 }
 
@@ -1092,8 +1149,232 @@ function AiResult({ai, onRerun}){
   );
 }
 
+/* ============================================================
+   タグ機能（クリエイティブ一覧専用）
+   ・紐づけデータは App が保持（[{id,adKey,tagName,createdAt}]）
+   ・色はタグ名のハッシュから決定論的に選択（リロードしても同色）
+============================================================ */
+const TAG_COLORS=[
+  {bg:"#ece9fe",fg:"#6c4cf0"}, // パープル
+  {bg:"#dcfce7",fg:"#16a34a"}, // グリーン
+  {bg:"#fef3c7",fg:"#b45309"}, // アンバー
+  {bg:"#fee2e2",fg:"#dc2626"}, // レッド
+  {bg:"#dbeafe",fg:"#2563eb"}, // ブルー
+  {bg:"#cffafe",fg:"#0e7490"}, // シアン
+  {bg:"#fce7f3",fg:"#db2777"}, // ピンク
+  {bg:"#ffedd5",fg:"#ea580c"}, // オレンジ
+  {bg:"#ccfbf1",fg:"#0d9488"}, // ティール
+  {bg:"#e0e7ff",fg:"#4f46e5"}, // インディゴ
+];
+function tagColor(name){
+  const s=String(name||""); let h=0;
+  for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; }
+  return TAG_COLORS[h%TAG_COLORS.length];
+}
+
+// カード上のタグ行：付与済みバッジ（×で解除）＋「＋タグ」プルダウン（既存タグ選択／新規作成）
+// note：プルダウン内に出す注記（省略可。課題回答タブのみ使用。未指定なら表示なし＝従来どおり）
+function TagRow({adKey, tagList, allTagNames, onAdd, onRemove, note}){
+  const [open,setOpen]=useState(false);
+  const [q,setQ]=useState("");
+  const candidates=allTagNames.filter(t=>tagList.indexOf(t)<0);
+  const name=q.trim();
+  function pick(t){ setOpen(false); setQ(""); onAdd(adKey, t); }
+  return (
+    <div className="tagrow">
+      {tagList.map(t=>{
+        const c=tagColor(t);
+        return (
+          <span className="tagchip" key={t} style={{background:c.bg,color:c.fg}}>
+            {t}
+            <button className="tagchip-x" title="このタグを外す" style={{color:c.fg}} onClick={()=>onRemove(adKey, t)}>×</button>
+          </span>
+        );
+      })}
+      <span className="tagadd-wrap">
+        <button className="tagadd-btn" onClick={()=>{ setOpen(o=>!o); setQ(""); }}>＋タグ</button>
+        {open? (
+          <React.Fragment>
+            <span className="tagpop-veil" onClick={()=>{ setOpen(false); setQ(""); }}></span>
+            <span className="tagpop">
+              <input type="text" autoFocus value={q} placeholder="新しいタグ名を入力"
+                onChange={e=>setQ(e.target.value)}
+                onKeyDown={e=>{ if(e.key==="Enter"&&name) pick(name); if(e.key==="Escape"){ setOpen(false); setQ(""); } }} />
+              {name? <button className="tagpop-new" onClick={()=>pick(name)}>「{name}」を作成して付与</button> : null}
+              {candidates.length? (
+                <span className="tagpop-list">
+                  {candidates.map(t=>{
+                    const c=tagColor(t);
+                    return <button key={t} className="tagpop-item" onClick={()=>pick(t)}><i style={{background:c.fg}}></i>{t}</button>;
+                  })}
+                </span>
+              ) : (name? null : <span className="tagpop-empty">既存タグはありません。名前を入力して作成できます</span>)}
+              {note? <span className="tagpop-note">{note}</span> : null}
+            </span>
+          </React.Fragment>
+        ):null}
+      </span>
+    </div>
+  );
+}
+
+// 「タグを管理」モーダル：全タグ＋付与件数、リネーム（即全反映）・削除（件数確認付き）
+function TagManageModal({tagCounts, busy, onRename, onDelete, onClose}){
+  const [editing,setEditing]=useState(null); // 編集中のタグ名
+  const [val,setVal]=useState("");
+  function submitRename(oldName){
+    const nn=val.trim();
+    if(!nn||nn===oldName){ setEditing(null); return; }
+    setEditing(null);
+    onRename(oldName, nn);
+  }
+  return (
+    <div className="tp-overlay" onClick={busy?null:onClose}>
+      <div className="tp-modal" onClick={e=>e.stopPropagation()}>
+        <h3>タグを管理</h3>
+        {tagCounts.length===0? <div className="tg-none">タグはまだありません。カードの「＋タグ」から作成できます。</div> : (
+          <div className="tg-list">
+            {tagCounts.map(tc=>{
+              const c=tagColor(tc.name);
+              return (
+                <div className="tg-row" key={tc.name}>
+                  {editing===tc.name? (
+                    <React.Fragment>
+                      <input className="tg-input" type="text" autoFocus value={val}
+                        onChange={e=>setVal(e.target.value)}
+                        onKeyDown={e=>{ if(e.key==="Enter") submitRename(tc.name); if(e.key==="Escape") setEditing(null); }} />
+                      <div className="tg-actions">
+                        <button className="tp-btn" disabled={busy} onClick={()=>submitRename(tc.name)}>保存</button>
+                        <button className="tp-btn" disabled={busy} onClick={()=>setEditing(null)}>キャンセル</button>
+                      </div>
+                    </React.Fragment>
+                  ):(
+                    <React.Fragment>
+                      <span className="tagchip" style={{background:c.bg,color:c.fg}}>{tc.name}</span>
+                      <span className="tg-count">{tc.count}件</span>
+                      <div className="tg-actions">
+                        <button className="tp-btn" disabled={busy} onClick={()=>{ setEditing(tc.name); setVal(tc.name); }}>リネーム</button>
+                        <button className="tp-btn danger" disabled={busy} onClick={()=>onDelete(tc.name, tc.count)}>削除</button>
+                      </div>
+                    </React.Fragment>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="tp-modal-foot">
+          <button className="tp-cancel" onClick={onClose} disabled={busy}>閉じる</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ▼3タブ共通：タグ集計・書き込み（tagData/setTagData は App 保持なので、どのタブで書いても全タブに即反映）。
+//   楽観更新＋失敗時ロールバック＋「保存中…/保存しました」表示。ロジックは旧 Creatives 実装をそのまま移設。
+function useTagStore(tagData, setTagData){
+  const [tagBusy,setTagBusy]=useState(false);
+  const [tagMsg,setTagMsg]=useState(null); // {text, kind:"info"|"ok"|"err"}
+  const tagMsgTimer=useRef(null);
+  function flashTagMsg(text,kind){
+    setTagMsg({text,kind});
+    if(tagMsgTimer.current) clearTimeout(tagMsgTimer.current);
+    if(kind!=="err") tagMsgTimer.current=setTimeout(()=>setTagMsg(null), 2500);
+  }
+  const tagsByAd = useMemo(()=>{ const m={}; (tagData||[]).forEach(t=>{ (m[t.adKey]=m[t.adKey]||[]).push(t.tagName); }); return m; },[tagData]);
+  const allTagNames = useMemo(()=>{ const s={}; (tagData||[]).forEach(t=>{ s[t.tagName]=true; }); return Object.keys(s).sort((a,b)=>a.localeCompare(b,"ja")); },[tagData]);
+  const tagCounts = useMemo(()=> allTagNames.map(n=>({name:n, count:(tagData||[]).filter(t=>t.tagName===n).length})),[allTagNames,tagData]);
+  async function tagWrite(body){
+    try{ return await postTagWrite(body); }
+    catch(e){ console.warn("[OWNER'S] tag 書き込み失敗:", e.message); return { ok:false, error:"通信に失敗しました" }; }
+  }
+  async function addTag(adKey, tagName){
+    const name=String(tagName||"").trim();
+    if(!name||!adKey) return;
+    const prev=tagData||[];
+    if(prev.some(t=>t.adKey===adKey&&t.tagName===name)) return;
+    const tempId="tmp-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);
+    setTagData(prev.concat([{id:tempId, adKey:adKey, tagName:name, createdAt:""}]));
+    flashTagMsg("保存中…","info");
+    const res=await tagWrite({action:"tagAdd", adKey:adKey, tagName:name});
+    if(!res||!res.ok){ setTagData(prev); flashTagMsg("保存に失敗しました："+((res&&res.error)||"不明なエラー"),"err"); return; }
+    if(res.id) setTagData(cur=>(cur||[]).map(t=>t.id===tempId? {...t, id:res.id} : t));
+    flashTagMsg("保存しました","ok");
+  }
+  async function removeTag(adKey, tagName){
+    const prev=tagData||[];
+    setTagData(prev.filter(t=>!(t.adKey===adKey&&t.tagName===tagName)));
+    flashTagMsg("保存中…","info");
+    const res=await tagWrite({action:"tagRemove", adKey:adKey, tagName:tagName});
+    if(!res||!res.ok){ setTagData(prev); flashTagMsg("保存に失敗しました："+((res&&res.error)||"不明なエラー"),"err"); return; }
+    flashTagMsg("保存しました","ok");
+  }
+  async function renameTag(oldName, newName){
+    const prev=tagData||[];
+    setTagBusy(true);
+    // 楽観更新：改名し、改名先と重複した紐づけ（同一adKey×tagName）は1つに統合
+    const seen={}; const next=[];
+    prev.forEach(t=>{
+      const nn=t.tagName===oldName? {...t, tagName:newName} : t;
+      const k=nn.adKey+"\u0000"+nn.tagName;
+      if(seen[k]) return; seen[k]=true; next.push(nn);
+    });
+    setTagData(next);
+    flashTagMsg("保存中…","info");
+    const res=await tagWrite({action:"tagRename", oldName:oldName, newName:newName});
+    setTagBusy(false);
+    if(!res||!res.ok){ setTagData(prev); flashTagMsg("保存に失敗しました："+((res&&res.error)||"不明なエラー"),"err"); return; }
+    flashTagMsg("保存しました","ok");
+  }
+  async function deleteTag(tagName, count){
+    if(!window.confirm("このタグは"+count+"件のクリエイティブに付いています。\n削除しますか？（付与がすべて外れます）")) return;
+    const prev=tagData||[];
+    setTagBusy(true);
+    setTagData(prev.filter(t=>t.tagName!==tagName));
+    flashTagMsg("保存中…","info");
+    const res=await tagWrite({action:"tagDelete", tagName:tagName});
+    setTagBusy(false);
+    if(!res||!res.ok){ setTagData(prev); flashTagMsg("削除に失敗しました："+((res&&res.error)||"不明なエラー"),"err"); return; }
+    flashTagMsg("保存しました","ok");
+  }
+  return { tagsByAd, allTagNames, tagCounts, tagBusy, tagMsg, addTag, removeTag, renameTag, deleteTag };
+}
+
+// ▼3タブ共通：タグフィルタバー（全タグボタン・OR選択・色付き強調・一括解除・「タグを管理」・保存メッセージ）。
+//   「タグを管理」モーダルの開閉もここで持つ（modalはposition:fixedなので描画位置は影響しない）。
+//   UIは旧 Creatives のタグバーをそのまま部品化。selTags/setSelTags は App 保持＝3タブで共有・連動。
+function TagBar({store, selTags, setSelTags, tagState, onTagRetry}){
+  const [tagModal,setTagModal]=useState(false);
+  const {allTagNames, tagCounts, tagBusy, tagMsg, renameTag, deleteTag}=store;
+  return (
+    <React.Fragment>
+      <div className="tagbar">
+        <span className="tagbar-label">タグ：</span>
+        {tagState==="loading"? <span className="tagbar-note">読み込み中…</span> : null}
+        {tagState==="error"? <span className="tagbar-note">タグの取得に失敗しました<button className="reload" style={{marginLeft:6}} onClick={onTagRetry}>↻ 再試行</button></span> : null}
+        {tagState==="done"&&allTagNames.length===0? <span className="tagbar-note">タグ未登録（各カードの「＋タグ」から作成できます）</span> : null}
+        {allTagNames.map(t=>{
+          const c=tagColor(t); const on=selTags.indexOf(t)>=0;
+          return (
+            <button key={t} className={"tagf-btn"+(on?" on":"")}
+              style={on? {background:c.bg,color:c.fg,borderColor:c.fg} : null}
+              onClick={()=>setSelTags(p=> p.indexOf(t)>=0? p.filter(x=>x!==t) : p.concat([t]))}>
+              <i style={{background:c.fg}}></i>{t}
+            </button>
+          );
+        })}
+        {selTags.length? <button className="tagf-clear" onClick={()=>setSelTags([])}>タグ絞り込みを解除</button> : null}
+        <button className="tagf-manage" onClick={()=>setTagModal(true)}>タグを管理</button>
+        {tagMsg? <span className={"tp-msg"+(tagMsg.kind==="ok"?" ok":tagMsg.kind==="err"?" err":"")}>{tagMsg.text}</span> : null}
+      </div>
+      {tagModal? <TagManageModal tagCounts={tagCounts} busy={tagBusy} onRename={renameTag} onDelete={deleteTag} onClose={()=>{ if(!tagBusy) setTagModal(false); }} /> : null}
+    </React.Fragment>
+  );
+}
+
 // 期間配列の1行（クリエイティブ）を全指標＋単価で表示
-function FunnelCard({row, meta, targets, isDaily, period}){
+function FunnelCard({row, meta, targets, isDaily, period, tagList, allTagNames, onTagAdd, onTagRemove}){
   const si=statusInfo(row.status);
   const img = row.image || (meta&&meta.image) || "";
   const rating = ratingFromText(row.score);
@@ -1123,6 +1404,8 @@ function FunnelCard({row, meta, targets, isDaily, period}){
         <span className={"pill "+si.cls}>{si.label}</span>
         <div className="ck">{row.adKey}</div>
         {meta&&meta.title? <div className="ctitle">{meta.title}</div>:null}
+
+        {onTagAdd? <TagRow adKey={row.adKey} tagList={tagList||[]} allTagNames={allTagNames||[]} onAdd={onTagAdd} onRemove={onTagRemove} /> : null}
 
         <div className="fm-top">
           <div className="fm-cell"><span>消化金額</span><b>{yen0(row.spend)}</b></div>
@@ -1191,7 +1474,7 @@ function FunnelCard({row, meta, targets, isDaily, period}){
   );
 }
 
-function Creatives({data, adQ, setAdQ}){
+function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry, selTags, setSelTags}){
   const fmtD=(d)=>{const z=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
   const [period,setPeriod]=useState("cumulative");
   const [filter,setFilter]=useState("all");
@@ -1240,17 +1523,28 @@ function Creatives({data, adQ, setAdQ}){
   const nq = normAdKey(adQ);
   const shown = useMemo(()=> nq? view.filter(x=>adKeyHit(x.row.adKey, nq)) : view, [view, nq]);
 
+  // ▼タグ絞り込み（パイプライン4段目）：ステータス→並替→広告ID検索の後段。
+  //   複数タグは「いずれかを含む（OR）」、他のフィルタとはANDで重なる。集計値には手を加えない（表示の絞り込みのみ）。
+  //   集計・書き込みは useTagStore（3タブ共通）。selTags は App 保持＝3タブで共有・連動。
+  const tagStore = useTagStore(tagData, setTagData);
+  const {tagsByAd, allTagNames, addTag, removeTag} = tagStore;
+  const tagFiltered = useMemo(()=> selTags.length? shown.filter(x=>{
+    const mine=tagsByAd[x.row.adKey]||[];
+    return selTags.some(t=>mine.indexOf(t)>=0);
+  }) : shown, [shown, selTags, tagsByAd]);
+
   let body;
   if(isCustom && (cState==="loading"||cState==="idle")){
     body = <div className="loadwrap"><div className="spin"></div>指定期間のデータを集計中…</div>;
   } else if(isCustom && cState==="error"){
     body = <div className="empty">{cErr||"取得に失敗しました"}<button className="reload" style={{marginLeft:8}} onClick={loadReport}>↻ 再試行</button></div>;
   } else {
-    body = shown.length? (
+    body = tagFiltered.length? (
       <div className="cgrid">
-        {shown.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} />)}
+        {tagFiltered.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period}
+          tagList={tagsByAd[x.row.adKey]||[]} allTagNames={allTagNames} onTagAdd={addTag} onTagRemove={removeTag} />)}
       </div>
-    ):<div className="empty">{nq? "該当する広告IDがありません" : "該当するクリエイティブはありません"}</div>;
+    ):<div className="empty">{nq? "該当する広告IDがありません" : (selTags.length? "選択したタグが付いたクリエイティブはありません" : "該当するクリエイティブはありません")}</div>;
   }
 
   return (
@@ -1286,9 +1580,12 @@ function Creatives({data, adQ, setAdQ}){
           <option value="consultCpa">並替：説明会申込単価が安い順</option>
           <option value="closeCpa">並替：成約単価が安い順</option>
         </select>
-        <span className="count">{nq? (shown.length+"件 / 全"+view.length+"件") : (view.length+"件（"+labels[period]+"）")}</span>
+        <span className="count">{(nq||selTags.length)? (tagFiltered.length+"件 / 全"+view.length+"件") : (view.length+"件（"+labels[period]+"）")}</span>
       </div>
-      <AdKeySearch q={adQ} setQ={setAdQ} />
+      <div className="tagbar-wrap">
+        <AdKeySearch q={adQ} setQ={setAdQ} />
+        <TagBar store={tagStore} selTags={selTags} setSelTags={setSelTags} tagState={tagState} onTagRetry={onTagRetry} />
+      </div>
       {isCustom? (
         <div className="cohort-note">※選択期間に<b>友だち追加された人</b>のファネル到達状況（成約日ではなく<b>友だち追加日</b>で集計するコホート方式）。消化金額のみ実際の消化日ベース。</div>
       ):null}
@@ -1545,7 +1842,7 @@ function AiBResult({d, onRerun}){
 
 // クリエイティブ別 営業実績カード（画像・タイトルは台帳メタから）
 // ▼ボタンB（段階C-2）：上位層AI傾向分析を搭載（手動トリガー・押した時だけ ?type=analyzeB を叩く）
-function SalesCard({s, meta, consultCpa, cpaTarget}){
+function SalesCard({s, meta, consultCpa, cpaTarget, tagList, allTagNames, onTagAdd, onTagRemove}){
   const img = (meta && meta.image) || "";
   const [aiState,setAiState]=useState("idle"); // idle|loading|done|error
   const [ai,setAi]=useState(null);
@@ -1568,6 +1865,8 @@ function SalesCard({s, meta, consultCpa, cpaTarget}){
       <div className="body">
         <div className="ck">{s.adKey}</div>
         {meta && meta.title? <div className="ctitle">{meta.title}</div>:null}
+
+        {onTagAdd? <TagRow adKey={s.adKey} tagList={tagList||[]} allTagNames={allTagNames||[]} onAdd={onTagAdd} onRemove={onTagRemove} /> : null}
 
         {/* ▼説明会申込単価：クリエイティブ一覧タブと同一の値（消化金額÷説明会申込数）。値なし・申込0は「—」 */}
         <div className="fm-top" style={{gridTemplateColumns:"1fr"}}>
@@ -1638,7 +1937,7 @@ function AnswerPerson({p}){
   );
 }
 
-function AnswersViewer({answers, summary, state, onRetry, adQ, setAdQ}){
+function AnswersViewer({answers, summary, state, onRetry, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry, selTags, setSelTags}){
   const [sel,setSel]=useState(null);
   const metaMap=useMemo(()=>{ const m={}; ((summary&&summary.creatives)||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[summary]);
   const byCreative=(answers&&answers.byCreative)||{};
@@ -1649,6 +1948,16 @@ function AnswersViewer({answers, summary, state, onRetry, adQ, setAdQ}){
   // ▼広告ID検索（3タブ共有）：一覧ビューのカードのみ絞り込み（選択後の個人回答ビューは対象外）
   const nq = normAdKey(adQ);
   const shown = useMemo(()=> nq? cards.filter(c=>adKeyHit(c.adKey, nq)) : cards, [cards, nq]);
+  // ▼タグ絞り込み（3タブ共有）：広告ID検索の後段。複数タグはOR、広告ID検索とはAND。
+  //   一覧ビューのみ対象（個人回答ビューは対象外。戻ってもselTagsはApp保持のため選択は維持される）。
+  const tagStore = useTagStore(tagData, setTagData);
+  const {tagsByAd, allTagNames, addTag, removeTag} = tagStore;
+  const tagFiltered = useMemo(()=> selTags.length? shown.filter(c=>{
+    const mine=tagsByAd[c.adKey]||[];
+    return selTags.some(t=>mine.indexOf(t)>=0);
+  }) : shown, [shown, selTags, tagsByAd]);
+  // ▼課題回答のみ：「＋タグ」プルダウン内に出す注記（タグは記録単位ではなくクリエイティブ単位である旨）
+  const TAG_NOTE_ANSWERS = "タグはクリエイティブ単位で保存されます。同じ広告IDの他の記録にも反映されます";
 
   if(state==="loading" || (state==="idle")){
     return <div className="loadwrap"><div className="spin"></div>課題回答を読み込み中…</div>;
@@ -1683,26 +1992,37 @@ function AnswersViewer({answers, summary, state, onRetry, adQ, setAdQ}){
   }
 
   // ▼一覧：クリエイティブ画像カード
+  //   カードは <button>→<div role="button"> へ変更（タグ操作ボタンを中に置くとボタン入れ子の不正HTMLになるため）。
+  //   Enter/Space で開けるキーボード操作と focus-visible リングは維持（.acard:focus-visible）。
+  //   タグ行は stopPropagation ラッパで包み、タグ操作でカードが開かないようにする。
   return (
     <div>
-      <AdKeySearch q={adQ} setQ={setAdQ} />
-      <div className="meta-line" style={{marginTop:0}}>
-        {nq? ("クリエイティブ "+shown.length+"件 / 全"+cards.length+"件") : ("クリエイティブ "+cards.length+"件")} / 回答者 {(answers&&answers.personCount)||0}名 — カードを選ぶとDay回答が見られます
+      <div className="tagbar-wrap">
+        <AdKeySearch q={adQ} setQ={setAdQ} />
+        <TagBar store={tagStore} selTags={selTags} setSelTags={setSelTags} tagState={tagState} onTagRetry={onTagRetry} />
       </div>
-      {shown.length? (
+      <div className="meta-line" style={{marginTop:0}}>
+        {(nq||selTags.length)? ("クリエイティブ "+tagFiltered.length+"件 / 全"+cards.length+"件") : ("クリエイティブ "+cards.length+"件")} / 回答者 {(answers&&answers.personCount)||0}名 — カードを選ぶとDay回答が見られます
+      </div>
+      {tagFiltered.length? (
         <div className="agrid">
-          {shown.map(c=>(
-            <button className="acard" key={c.adKey} onClick={()=>setSel(c.adKey)}>
+          {tagFiltered.map(c=>(
+            <div className="acard" key={c.adKey} role="button" tabIndex={0}
+              onClick={()=>setSel(c.adKey)}
+              onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){ e.preventDefault(); setSel(c.adKey); } }}>
               <KV src={c.meta.image||""} alt={c.adKey} />
               <div className="abody">
                 <div className="ak">{c.adKey}</div>
                 {c.meta.title? <div className="atitle">{c.meta.title}</div>:null}
+                <div onClick={e=>e.stopPropagation()} onKeyDown={e=>e.stopPropagation()}>
+                  <TagRow adKey={c.adKey} tagList={tagsByAd[c.adKey]||[]} allTagNames={allTagNames} onAdd={addTag} onRemove={removeTag} note={TAG_NOTE_ANSWERS} />
+                </div>
                 <div className="acnt"><b>{c.count}</b>名（回答 {c.withAns}）</div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
-      ):<div className="empty">{nq? "該当する広告IDがありません" : "課題回答データがありません"}</div>}
+      ):<div className="empty">{nq? "該当する広告IDがありません" : (selTags.length? "該当するクリエイティブがありません" : "課題回答データがありません")}</div>}
     </div>
   );
 }
@@ -1756,7 +2076,7 @@ function StaffDetails({details}){
   );
 }
 
-function SalesAnalysis({sales, summary, adQ, setAdQ}){
+function SalesAnalysis({sales, summary, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry, selTags, setSelTags}){
   const data = sales || {};
   const byCreative = data.byCreative || [];
   const byStaff = (data.byStaff || []).filter(s=>N(s.applied)>0); // 申込0の担当者は非表示（表示のみ）
@@ -1789,6 +2109,14 @@ function SalesAnalysis({sales, summary, adQ, setAdQ}){
   // ▼広告ID検索（3タブ共有）：クリエイティブ別カードのみ絞り込み（担当者別サマリーはadKeyを持たないため対象外）
   const nq = normAdKey(adQ);
   const shown = useMemo(()=> nq? cards.filter(c=>adKeyHit(c.adKey, nq)) : cards, [cards, nq]);
+  // ▼タグ絞り込み（3タブ共有）：広告ID検索の後段。複数タグはOR、ステータス系・広告ID検索とはAND。
+  //   クリエイティブ別カードのみ対象（担当者別サマリーは広告ID検索と同様に対象外）。集計値には手を加えない。
+  const tagStore = useTagStore(tagData, setTagData);
+  const {tagsByAd, allTagNames, addTag, removeTag} = tagStore;
+  const tagFiltered = useMemo(()=> selTags.length? shown.filter(c=>{
+    const mine=tagsByAd[c.adKey]||[];
+    return selTags.some(t=>mine.indexOf(t)>=0);
+  }) : shown, [shown, selTags, tagsByAd]);
 
   if(!byCreative.length && !byStaff.length){
     return <div className="empty">営業データがありません</div>;
@@ -1817,20 +2145,24 @@ function SalesAnalysis({sales, summary, adQ, setAdQ}){
         </div>
       ):null}
 
-      {unknownCount && !nq? (
+      {unknownCount && !nq && !selTags.length? (
         <div className="sales-note">
           <Icon name="triangle-alert" size={15} />
           広告外経由（オーガニック等）：{comma(unknownCount)} 件　※広告キー不明のため、クリエイティブ別カードには含めていません
         </div>
       ):null}
 
-      <AdKeySearch q={adQ} setQ={setAdQ} />
-      <div className="sec-title">クリエイティブ別 営業実績（{nq? (shown.length+"件 / 全"+cards.length+"件") : (cards.length+"件")}）</div>
-      {shown.length? (
+      <div className="tagbar-wrap">
+        <AdKeySearch q={adQ} setQ={setAdQ} />
+        <TagBar store={tagStore} selTags={selTags} setSelTags={setSelTags} tagState={tagState} onTagRetry={onTagRetry} />
+      </div>
+      <div className="sec-title">クリエイティブ別 営業実績（{(nq||selTags.length)? (tagFiltered.length+"件 / 全"+cards.length+"件") : (cards.length+"件")}）</div>
+      {tagFiltered.length? (
         <div className="cgrid">
-          {shown.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} consultCpa={consultCpaOf(c.adKey)} cpaTarget={cpaTarget} />)}
+          {tagFiltered.map((c,i)=><SalesCard key={(c.adKey||"")+i} s={c} meta={metaMap[c.adKey]} consultCpa={consultCpaOf(c.adKey)} cpaTarget={cpaTarget}
+            tagList={tagsByAd[c.adKey]||[]} allTagNames={allTagNames} onTagAdd={addTag} onTagRemove={removeTag} />)}
         </div>
-      ):<div className="empty">{nq? "該当する広告IDがありません" : "クリエイティブ別の営業データがありません"}</div>}
+      ):<div className="empty">{nq? "該当する広告IDがありません" : (selTags.length? "該当するクリエイティブがありません" : "クリエイティブ別の営業データがありません")}</div>}
     </div>
   );
 }
@@ -2077,6 +2409,20 @@ function App(){
   const [runMsg,setRunMsg]=useState("");       // 手動更新の失敗メッセージ
   // ▼広告ID検索語（クリエイティブ一覧・課題回答・営業分析の3タブで共有。タブ切替でも維持、×で3タブ同時解除）
   const [adQuery,setAdQuery]=useState("");
+  // ▼タグ紐づけ（クリエイティブ一覧・営業分析・課題回答の3タブ共有。App保持＝タブ切替でも再取得不要。
+  //   書き込みは各タブの useTagStore 経由で楽観更新→どのタブで変更しても3タブに即反映）
+  const [tagData,setTagData]=useState(null);
+  const [tagState,setTagState]=useState("idle"); // idle|loading|done|error
+  // ▼選択中タグ（3タブ共有。タブ切替でも維持、解除すると3タブ同時解除。adQueryと同じ設計）
+  const [selTags,setSelTags]=useState([]);
+  // リネーム・削除で存在しなくなったタグは選択から自動で外す（変化が無ければ状態は更新しない）
+  useEffect(()=>{
+    setSelTags(p=>{
+      const names={}; (tagData||[]).forEach(t=>{ names[t.tagName]=true; });
+      const n=p.filter(t=>names[t]);
+      return n.length===p.length? p : n;
+    });
+  },[tagData]);
 
   async function load(){
     setLoading(true); setWarn(""); setShowWarn(true);
@@ -2128,6 +2474,22 @@ function App(){
   }
   useEffect(()=>{ if(tab==="answers") loadAnswers(); },[tab]);
 
+  // ▼タグ（遅延取得：クリエイティブ一覧・営業分析・課題回答のいずれかを初めて開いた時に1回だけ fetch。
+  //   loading/doneガードで二重取得を防止。summaryは重くしない。失敗時は再試行可）
+  async function loadTags(){
+    if(tagState==="loading"||tagState==="done") return;
+    setTagState("loading");
+    try{
+      const raw=await jsonpRetry(URL_TAGS + "&_=" + Date.now(), 2, 28000); // 再デプロイを確実に拾うキャッシュバスター
+      setTagData((raw&&raw.tags)||[]); setTagState("done");
+      console.log("%c[OWNER'S] type=tags : ✅ 実データ取得 成功","color:#16a34a;font-weight:bold");
+    }catch(e){
+      setTagData([]); setTagState("error");
+      console.warn("[OWNER'S] tags 取得失敗:", e.message);
+    }
+  }
+  useEffect(()=>{ if(tab==="crea"||tab==="sales"||tab==="answers") loadTags(); },[tab]);
+
   useEffect(()=>{ load(); },[]);
 
   if(loading || !summary){
@@ -2178,10 +2540,10 @@ function App(){
           </div>
 
           {tab==="dash"   && <Dashboard data={summary} />}
-          {tab==="crea"   && <Creatives data={summary} adQ={adQuery} setAdQ={setAdQuery} />}
-          {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} adQ={adQuery} setAdQ={setAdQuery} />}
+          {tab==="crea"   && <Creatives data={summary} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
+          {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
           {tab==="testplan"&& <TestPlan />}
-          {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} adQ={adQuery} setAdQ={setAdQuery} />}
+          {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
           {tab==="hist"   && <History history={history} summary={summary} />}
           {tab==="search" && <Search data={summary} />}
         </div>
