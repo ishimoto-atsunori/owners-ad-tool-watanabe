@@ -573,6 +573,7 @@ const URL_SALES   = API + "?type=sales"; // 営業分析データ
 const URL_ANSWERS = API + "?type=answers"; // 課題回答（クリエイティブ別・遅延取得）
 const URL_TESTPLAN = API + "?type=testplan"; // テスト予定（一覧）
 const URL_TAGS    = API + "?type=tags"; // タグ管理（クリエイティブ×タグの紐づけ一覧・遅延取得）
+const URL_ADFUNNEL = API + "?type=adfunnel"; // 広告別3段ファネル（クリエイティブ一覧カードの「LINE追加」行・遅延取得）
 
 // ▼ビルドタグ：いま開いているページがどの版かを即判別するための表示（サイドバー最下部＋起動時コンソール）。
 //   デプロイ反映確認用。ボタンBが見えない等の際は、まずこの表記が最新かを確認する（古ければキャッシュか別ページ）。
@@ -765,6 +766,26 @@ const STAGES = [
   {key:"consult", label:"説明会", cpa:"consultCpa", tgt:"consult"},
   {key:"close",   label:"成約",   cpa:"closeCpa",   tgt:"close"},
 ];
+// ▼クリエイティブカードのファネル行スタイル（CSSファイルには追記せずインラインで完結させる）
+//   ラベル列は既定58pxだと「LINE追加」が収まらないため70pxへ。5行すべて同じ値にして桁を揃える。
+//   LINE追加行はカードの期間に合わせて集計するようになったので、他4行と同じ見た目にする
+//   （アンバー着色・行内注記は撤去。期間の但し書きはヘッダーの .cohort-note に1箇所だけ出す）。
+const STAGE_COLS = "70px 1fr auto";
+const STAGE_ROW_STYLE = {gridTemplateColumns:STAGE_COLS};
+const STAGE_RATE_STYLE = {fontSize:"11px",fontWeight:700,color:"var(--mute)",marginLeft:"5px"};
+// ▼広告ID(cid)の記録開始日。これより前は LINE追加を計測できていない
+const AF_SINCE = "2026-07-23";
+// "2026-09-02〜2026-09-08" のような集計期間文字列を {since,until} に分解する。
+//   区切り文字は環境差を避けるため「日付以外の1文字以上」として拾う。解釈できなければ null
+function parsePeriod(p){
+  const m = String(p==null?"":p).match(/(\d{4}-\d{2}-\d{2})\D+(\d{4}-\d{2}-\d{2})/);
+  return m ? {since:m[1], until:m[2]} : null;
+}
+// 件数 ÷ そのカードの期間のオプト数。分母が0／件数が非数なら「—」
+function optRate(cnt, opt){
+  if(!isNum(cnt) || !isNum(opt) || Number(opt)<=0) return "—";
+  return (Math.round(Number(cnt)/Number(opt)*1000)/10)+"%";
+}
 // ROAS：比率→% （roas×100 四捨五入）。値なしは「—」
 const roasPct = (v)=> isNum(v) ? Math.round(Number(v)*100)+"%" : "—";
 // ROASの色：日次=グレー / 7日間・累計=100%以上緑・未満赤
@@ -785,8 +806,20 @@ function planCount(v, avail){ return avail ? comma(v) : "—"; }
 function cntDash(v){ return isNum(v) ? comma(v) : "—"; }
 // 成約率：集計した比率(数値)を%表示。null/空は「—」。390%等の異常値もそのまま
 function ratePct(v){ return (v==null || v==="") ? "—" : Math.round(Number(v)*100)+"%"; }
-// JSON行の成約率文字列（例 "33.3%" / ""）をそのまま表示。空は「—」
-function rateStr(v){ const s=(v==null)?"":String(v).trim(); return s==="" ? "—" : s; }
+// JSON行の成約率を表示。空は「—」。
+//   backend は "33.3%" という文字列を書き込むが、Googleスプレッドシートがパーセント数値 0.333 へ
+//   自動変換するため、APIからは数値で返ってくる（実測確認済み）。シートの列書式次第では
+//   文字列のまま来ることもあるので、数値・文字列の両方を受けて必ず「33.3%」形式にそろえる。
+//     数値0.333 → "33.3%" ／ 文字列"33.3%" → そのまま ／ 空・null → "—"
+function rateStr(v){
+  if(v==null || v==="") return "—";
+  if(typeof v==="number") return (Math.round(v*1000)/10)+"%";
+  const s=String(v).trim();
+  if(s==="") return "—";
+  if(s.indexOf("%")>=0) return s;
+  const n=Number(s);
+  return isNaN(n) ? s : (Math.round(n*1000)/10)+"%";
+}
 // 営業：成約率（数値%）→ 「67%（5/8）」。null は「—」
 function salesRate(rate, rateNum){
   if(rate==null || rate==="") return "—";
@@ -1387,11 +1420,13 @@ function TagBar({store, selTags, setSelTags, tagState, onTagRetry}){
 }
 
 // 期間配列の1行（クリエイティブ）を全指標＋単価で表示
-function FunnelCard({row, meta, targets, isDaily, period, tagList, allTagNames, onTagAdd, onTagRemove}){
+function FunnelCard({row, meta, targets, isDaily, period, afCount, tagList, allTagNames, onTagAdd, onTagRemove}){
   const si=statusInfo(row.status);
   const img = row.image || (meta&&meta.image) || "";
   const rating = ratingFromText(row.score);
   const cpaC = costClass(N(row.cpa), targets.cpa);
+  // ▼LINE追加の単価＝そのカードの期間の消化金額 ÷ 同期間のLINE追加数（他の段と同じ計算方法）
+  const afCpa = (afCount!=null && afCount>0 && isNum(row.spend)) ? Number(row.spend)/afCount : null;
   const avail = planAvailable(row);
   // ▼AI分析（手動トリガー・押した時だけ analyze を叩く。コスト管理のため自動では走らせない）
   const [aiState,setAiState]=useState("idle"); // idle|loading|done|error
@@ -1427,12 +1462,27 @@ function FunnelCard({row, meta, targets, isDaily, period, tagList, allTagNames, 
         </div>
 
         <div className="fm-stages">
+          {/* ▼LINE追加（?type=adfunnel の日別内訳をカードの期間で合計したもの）。
+              件数・率・単価とも他4行と同じ期間・同じ分母で算出するため、見た目も揃える。
+              単価は 消化金額 ÷ 件数（他の段と同じ計算方法）。afCount が null なら未取得＝「—」。 */}
+          <div className="fm-stage" style={STAGE_ROW_STYLE}>
+            <span className="fs-k">LINE追加</span>
+            <span className="fs-c">
+              {afCount!=null ? comma(afCount)+"件" : "—"}
+              <span style={STAGE_RATE_STYLE}>({afCount!=null ? optRate(afCount, row.opt) : "—"})</span>
+            </span>
+            <span className="fs-p">単価 {priceVal(afCpa)}</span>
+          </div>
+
           {STAGES.map(s=>{
             const pv=N(row[s.cpa]); const pc=priceCls(pv,targets[s.tgt]);
             return (
-              <div className="fm-stage" key={s.key}>
+              <div className="fm-stage" key={s.key} style={STAGE_ROW_STYLE}>
                 <span className="fs-k">{s.label}</span>
-                <span className="fs-c">{comma(row[s.key])}件</span>
+                <span className="fs-c">
+                  {comma(row[s.key])}件
+                  <span style={STAGE_RATE_STYLE}>({optRate(row[s.key], row.opt)})</span>
+                </span>
                 <span className={"fs-p "+pc}>単価 {priceVal(pv)}</span>
               </div>
             );
@@ -1487,7 +1537,7 @@ function FunnelCard({row, meta, targets, isDaily, period, tagList, allTagNames, 
   );
 }
 
-function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry, selTags, setSelTags}){
+function Creatives({data, adFunnel, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry, selTags, setSelTags}){
   const fmtD=(d)=>{const z=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
   const [period,setPeriod]=useState("cumulative");
   const [filter,setFilter]=useState("all");
@@ -1518,6 +1568,26 @@ function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry
   useEffect(()=>{ if(isCustom && cState==="idle") loadReport(); },[period]);
 
   const metaMap = useMemo(()=>{ const m={}; (data.creatives||[]).forEach(c=>{m[c.adKey]=c;}); return m; },[data.creatives]);
+  // ▼選択期間の窓。集計期間(row.period)は同一シート内で一定なので先頭行から取る。
+  //   日次/7日間/累計/指定期間のいずれも同じ書式なので、この1本で4モードすべてに対応できる。
+  const afWindow = useMemo(()=> parsePeriod(rows[0] && rows[0].period), [rows]);
+  // ▼3段ファネルの日別内訳(adFunnel.daily)を、その窓で広告キー別に合計する。
+  //   date は "yyyy-MM-dd" 固定なので文字列比較がそのまま日付比較になる（json_api 側で正規化済み）。
+  //   参考行(refRows)は他チーム分なので daily には元々含まれない。
+  const afMap = useMemo(()=>{
+    const m={};
+    if(!afWindow) return m;
+    ((adFunnel&&adFunnel.daily)||[]).forEach(d=>{
+      if(!d || !d.date || !d.adKey) return;
+      if(d.date < afWindow.since || d.date > afWindow.until) return;
+      m[d.adKey]=(m[d.adKey]||0)+(Number(d.friendAdd)||0);
+    });
+    return m;
+  },[adFunnel, afWindow]);
+  // ▼日別内訳が使えるか（未取得・期間解釈不能なら件数は「—」にする）
+  const afReady = !!(afWindow && adFunnel && adFunnel.daily);
+  // ▼選択期間が cid 記録開始日より前を含むか（ヘッダー注記の出し分け）
+  const afNeedNote = !!(afWindow && afWindow.since < AF_SINCE);
   const enriched = useMemo(()=> rows.map(r=>{
     const meta=metaMap[r.adKey]||{};
     return { row:Object.assign({}, r, {status: r.status || meta.status || ""}), meta };
@@ -1555,7 +1625,7 @@ function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry
   } else {
     body = tagFiltered.length? (
       <div className="cgrid">
-        {tagFiltered.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period}
+        {tagFiltered.map((x,i)=><FunnelCard key={x.row.adKey+i} row={x.row} meta={x.meta} targets={targets} isDaily={isDaily} period={period} afCount={afReady ? (afMap[x.row.adKey]||0) : null}
           tagList={tagsByAd[x.row.adKey]||[]} allTagNames={allTagNames} onTagAdd={addTag} onTagRemove={removeTag} />)}
       </div>
     ):<div className="empty">{nq? "該当する広告IDがありません" : (selTags.length? "選択したタグが付いたクリエイティブはありません" : "該当するクリエイティブはありません")}</div>;
@@ -1603,6 +1673,9 @@ function Creatives({data, adQ, setAdQ, tagData, setTagData, tagState, onTagRetry
       </div>
       {isCustom? (
         <div className="cohort-note">※選択期間に<b>友だち追加された人</b>のファネル到達状況（成約日ではなく<b>友だち追加日</b>で集計するコホート方式）。消化金額のみ実際の消化日ベース。</div>
+      ):null}
+      {afNeedNote? (
+        <div className="cohort-note">※<b>LINE追加</b>は広告ID記録を開始した <b>{AF_SINCE}</b> 以降のみ集計しています。選択期間にそれ以前が含まれるため、LINE追加は実際より少なく（単価は高く）表示されます。<b>Day1提出以降の数値は期間全体</b>を集計しています。</div>
       ):null}
       {body}
     </div>
@@ -2428,6 +2501,9 @@ function App(){
   //   書き込みは各タブの useTagStore 経由で楽観更新→どのタブで変更しても3タブに即反映）
   const [tagData,setTagData]=useState(null);
   const [tagState,setTagState]=useState("idle"); // idle|loading|done|error
+  // ▼3段ファネル（クリエイティブ一覧カードの「LINE追加」行用。遅延取得＝crea タブを開いた時だけ）
+  const [adFunnel,setAdFunnel]=useState(null);
+  const [adFunnelState,setAdFunnelState]=useState("idle"); // idle|loading|done|error
   // ▼選択中タグ（3タブ共有。タブ切替でも維持、解除すると3タブ同時解除。adQueryと同じ設計）
   const [selTags,setSelTags]=useState([]);
   // リネーム・削除で存在しなくなったタグは選択から自動で外す（変化が無ければ状態は更新しない）
@@ -2505,6 +2581,22 @@ function App(){
   }
   useEffect(()=>{ if(tab==="crea"||tab==="sales"||tab==="answers") loadTags(); },[tab]);
 
+  // ▼3段ファネル（遅延取得：loadTags と同型。loading/doneガードで二重取得を防止。
+  //   失敗しても adFunnel=null のままカードは表示され、LINE追加行が「—」になるだけ）
+  async function loadAdFunnel(){
+    if(adFunnelState==="loading"||adFunnelState==="done") return;
+    setAdFunnelState("loading");
+    try{
+      const raw=await jsonpRetry(URL_ADFUNNEL + "&_=" + Date.now(), 2, 28000); // 再デプロイを確実に拾うキャッシュバスター
+      setAdFunnel((raw&&raw.adFunnel)||null); setAdFunnelState("done");
+      console.log("%c[OWNER'S] type=adfunnel : ✅ 実データ取得 成功","color:#16a34a;font-weight:bold");
+    }catch(e){
+      setAdFunnel(null); setAdFunnelState("error");
+      console.warn("[OWNER'S] adfunnel 取得失敗:", e.message);
+    }
+  }
+  useEffect(()=>{ if(tab==="crea") loadAdFunnel(); },[tab]);
+
   useEffect(()=>{ load(); },[]);
 
   if(loading || !summary){
@@ -2555,7 +2647,7 @@ function App(){
           </div>
 
           {tab==="dash"   && <Dashboard data={summary} />}
-          {tab==="crea"   && <Creatives data={summary} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
+          {tab==="crea"   && <Creatives data={summary} adFunnel={adFunnel} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
           {tab==="answers"&& <AnswersViewer answers={answers} summary={summary} state={answersState} onRetry={loadAnswers} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
           {tab==="testplan"&& <TestPlan />}
           {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
