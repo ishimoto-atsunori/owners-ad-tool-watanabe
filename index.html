@@ -767,10 +767,12 @@ const STAGES = [
   {key:"close",   label:"成約",   cpa:"closeCpa",   tgt:"close"},
 ];
 // ▼クリエイティブカードのファネル行スタイル（CSSファイルには追記せずインラインで完結させる）
-//   ラベル列は既定58pxだと「LINE追加」が収まらないため70pxへ。5行すべて同じ値にして桁を揃える。
+//   ラベル列は既定58pxだと「LINE追加」が収まらないため70pxへ。全行で同じ値にして桁を揃える。
+//   ▼2026-09-18 さらに「リンククリック数」(8文字)が70pxでは収まらないため96pxへ。
+//     リンククリック3行＋LINE追加＋ファネル4段の計8行すべてで同じ値を使うので、桁は揃ったまま。
 //   LINE追加行はカードの期間に合わせて集計するようになったので、他4行と同じ見た目にする
 //   （アンバー着色・行内注記は撤去。期間の但し書きはヘッダーの .cohort-note に1箇所だけ出す）。
-const STAGE_COLS = "70px 1fr auto";
+const STAGE_COLS = "96px 1fr auto";
 const STAGE_ROW_STYLE = {gridTemplateColumns:STAGE_COLS};
 const STAGE_RATE_STYLE = {fontSize:"11px",fontWeight:700,color:"var(--mute)",marginLeft:"5px"};
 // ▼広告ID(cid)の記録開始日。これより前は LINE追加を計測できていない
@@ -786,6 +788,10 @@ function optRate(cnt, opt){
   if(!isNum(cnt) || !isNum(opt) || Number(opt)<=0) return "—";
   return (Math.round(Number(cnt)/Number(opt)*1000)/10)+"%";
 }
+// ▼2026-09-18 率（分子÷分母）。丸め（小数第1位）と「—」の条件を optRate に委譲するだけの別名。
+//   リンククリック率＝linkClicks÷impressions、登録率＝opt÷linkClicks に使う。
+//   分母が0・キーが無い（undefined）・非数のときは optRate と同じく "—" を返すのでエラーにならない。
+const rateOf = (num, den)=> optRate(num, den);
 // ROAS：比率→% （roas×100 四捨五入）。値なしは「—」
 const roasPct = (v)=> isNum(v) ? Math.round(Number(v)*100)+"%" : "—";
 // ROASの色：日次=グレー / 7日間・累計=100%以上緑・未満赤
@@ -1462,6 +1468,30 @@ function FunnelCard({row, meta, targets, isDaily, period, afCount, tagList, allT
         </div>
 
         <div className="fm-stages">
+          {/* ▼2026-09-18 リンククリック指標（Meta insights 由来。表示位置は消化金額/オプト数/CPA の下・LINE追加の上）。
+              ・リンククリック数 … row.linkClicks（Metaの inline_link_clicks を広告キー×期間で合算した実数）
+              ・リンククリック率 … linkClicks ÷ impressions（表示回数は分母としてのみ使い、カードには出さない）
+              ・登録率         … opt ÷ linkClicks（オプト数は既存のUTAGE実数）
+              期間連動は消化金額(spend)と同一経路（日次/7日間/累計＝?type=summary の各シート、
+              指定期間＝?type=report）なので、4モードすべてでカードの集計期間と一致する。
+              丸めと「—」判定は rateOf（=optRate）に委譲＝他の率と定義を1箇所に保つ。
+              単価の概念が無い3行なので、3列目は空のまま（グリッドは他行と共通＝桁が揃う）。 */}
+          <div className="fm-stage" style={STAGE_ROW_STYLE}>
+            <span className="fs-k">リンククリック数</span>
+            <span className="fs-c">{isNum(row.linkClicks) ? comma(row.linkClicks)+"件" : "—"}</span>
+            <span></span>
+          </div>
+          <div className="fm-stage" style={STAGE_ROW_STYLE}>
+            <span className="fs-k">リンククリック率</span>
+            <span className="fs-c">{rateOf(row.linkClicks, row.impressions)}</span>
+            <span></span>
+          </div>
+          <div className="fm-stage" style={STAGE_ROW_STYLE}>
+            <span className="fs-k">登録率</span>
+            <span className="fs-c">{rateOf(row.opt, row.linkClicks)}</span>
+            <span></span>
+          </div>
+
           {/* ▼LINE追加（?type=adfunnel の日別内訳をカードの期間で合計したもの）。
               件数・率・単価とも他4行と同じ期間・同じ分母で算出するため、見た目も揃える。
               単価は 消化金額 ÷ 件数（他の段と同じ計算方法）。afCount が null なら未取得＝「—」。 */}
