@@ -1467,30 +1467,23 @@ function FunnelCard({row, meta, targets, isDaily, period, afCount, tagList, allT
           <div className="fm-cell"><span>CPA</span><b className={cpaC}>{yen(row.cpa)}</b></div>
         </div>
 
+        {/* ▼2026-09-23 リンククリック指標。表示位置は変えず（消化金額/オプト数/CPA の下・LINE追加の上）、
+            横長の fm-stage 3行から、1段目と同じ .fm-top / .fm-cell の3ブロック横並びへ配置のみ変更した。
+            ・クリック数 … row.linkClicks（Metaの inline_link_clicks を広告キー×期間で合算した実数）
+            ・クリック率 … linkClicks ÷ impressions（表示回数は分母としてのみ使い、カードには出さない）
+            ・登録率     … opt ÷ linkClicks（オプト数は既存のUTAGE実数）
+            期間連動は消化金額(spend)と同一経路（日次/7日間/累計＝?type=summary の各シート、
+            指定期間＝?type=report）なので、4モードすべてでカードの集計期間と一致する。
+            丸めと「—」判定は rateOf（=optRate）に委譲＝他の率と定義を1箇所に保つ。値の式は移設前と同一。
+            ラベルはカード幅が最も狭くなる3カラム表示（セル内幅約56px）でも1行に収まる5文字に揃えてある。
+            これを長くすると折り返して3ブロックの数値の縦位置がずれるので注意。 */}
+        <div className="fm-top">
+          <div className="fm-cell"><span>クリック数</span><b>{isNum(row.linkClicks) ? comma(row.linkClicks)+"件" : "—"}</b></div>
+          <div className="fm-cell"><span>クリック率</span><b>{rateOf(row.linkClicks, row.impressions)}</b></div>
+          <div className="fm-cell"><span>登録率</span><b>{rateOf(row.opt, row.linkClicks)}</b></div>
+        </div>
+
         <div className="fm-stages">
-          {/* ▼2026-09-18 リンククリック指標（Meta insights 由来。表示位置は消化金額/オプト数/CPA の下・LINE追加の上）。
-              ・リンククリック数 … row.linkClicks（Metaの inline_link_clicks を広告キー×期間で合算した実数）
-              ・リンククリック率 … linkClicks ÷ impressions（表示回数は分母としてのみ使い、カードには出さない）
-              ・登録率         … opt ÷ linkClicks（オプト数は既存のUTAGE実数）
-              期間連動は消化金額(spend)と同一経路（日次/7日間/累計＝?type=summary の各シート、
-              指定期間＝?type=report）なので、4モードすべてでカードの集計期間と一致する。
-              丸めと「—」判定は rateOf（=optRate）に委譲＝他の率と定義を1箇所に保つ。
-              単価の概念が無い3行なので、3列目は空のまま（グリッドは他行と共通＝桁が揃う）。 */}
-          <div className="fm-stage" style={STAGE_ROW_STYLE}>
-            <span className="fs-k">リンククリック数</span>
-            <span className="fs-c">{isNum(row.linkClicks) ? comma(row.linkClicks)+"件" : "—"}</span>
-            <span></span>
-          </div>
-          <div className="fm-stage" style={STAGE_ROW_STYLE}>
-            <span className="fs-k">リンククリック率</span>
-            <span className="fs-c">{rateOf(row.linkClicks, row.impressions)}</span>
-            <span></span>
-          </div>
-          <div className="fm-stage" style={STAGE_ROW_STYLE}>
-            <span className="fs-k">登録率</span>
-            <span className="fs-c">{rateOf(row.opt, row.linkClicks)}</span>
-            <span></span>
-          </div>
 
           {/* ▼LINE追加（?type=adfunnel の日別内訳をカードの期間で合計したもの）。
               件数・率・単価とも他4行と同じ期間・同じ分母で算出するため、見た目も揃える。
