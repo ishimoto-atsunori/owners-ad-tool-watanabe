@@ -2574,6 +2574,7 @@ function PlacementView(){
           </table>
         </div>
       ):null}
+      {view? <PlacementQuality since={view.since} until={view.until} adKey={view.adKey||""} /> : null}
       {view? (
         <div className="meta-line" style={{marginTop:"14px"}}>
           確定＝オプトから{view.confirmDays}日以上たった人だけ（分母が{view.roughN}人未満は「目安」）。Day1単価＝消化 ÷ Day1提出数。「不明」の行の Day1 以降には、UTAGE でメールが見つからない {n(view.unmatched)}人を足しています。フィード・ストーリーズ・リールの人数は plc 付きの登録から来た人だけで、ない行は「—」です（今の plc 付きの登録：{n(view.plcCheck&&view.plcCheck.plc付きの登録)}人）。Metaの数字は広告マネージャと同じ数え方（クリック後7日・表示後1日以内の登録）です。自社の人数とは少しずれます。
@@ -2581,6 +2582,37 @@ function PlacementView(){
           <br/>対応表：{(view.map||[]).map(m=>m.label+"＝utm_source "+m.utm+"／Meta "+m.meta).join("　")}
         </div>
       ):null}
+    </div>
+  );
+}
+
+/* 配信先別：Day1を出した人の中身。人数と割合だけを受け取る */
+function PlacementQuality({since,until,adKey}){
+  const [q,setQ]=useState(null); const [state,setState]=useState("loading");
+  useEffect(()=>{ let on=true; setState("loading");
+    jsonpRetry(API+"?type=placementquality&since="+encodeURIComponent(since)+"&until="+encodeURIComponent(until)+"&adKey="+encodeURIComponent(adKey||"")+"&_="+Date.now(),2,60000)
+      .then(r=>{ if(!on) return; if(!r||r.ok===false){ setState("error"); return; } setQ(r); setState("done"); }).catch(()=>{ if(on) setState("error"); });
+    return ()=>{ on=false; };
+  },[since,until,adKey]);
+  if(state==="error") return <div className="empty">中身を読み込めませんでした</div>;
+  if(state==="loading"&&!q) return <div className="meta-line" style={{marginTop:"18px"}}>Day1を出した人の中身を読み込み中…</div>;
+  if(q.allCrOnly) return <div className="meta-line" style={{marginTop:"18px"}}>Day1を出した人の中身：{q.message}</div>;
+  const cell=(n,rate)=>isNum(rate)?n+"人（"+(Number(rate)*100).toFixed(1)+"%）":n+"人";
+  const label=(r)=><td style={{fontWeight:700}}>{r.label}{r.rough?<span className="pill" style={{marginLeft:"6px"}}>目安</span>:null}</td>;
+  return (
+    <div style={{marginTop:"22px",opacity:state==="loading"?0.5:1}}>
+      <div style={{fontWeight:800,margin:"0 0 6px"}}>Day1を出した人の中身</div>
+      <div className="meta-line">{q.note}</div>
+      <div style={{fontWeight:700,fontSize:"12px",margin:"10px 0 4px"}}>カードの利用枠（割合は答えが読めた人の中）</div>
+      <div className="plc-wrap"><table className="htbl plc-tbl"><thead><tr><th>配信先</th><th>Day1提出</th><th>答えが読めた</th>{q.tiers.map(t=><th key={t}>{t}</th>)}</tr></thead>
+        <tbody>{q.rows.map(r=><tr key={r.label}>{label(r)}<td>{r.day1}人</td><td>{r.limitBase}人</td>{q.tiers.map(t=><td key={t}>{cell(r.limit[t],t==="答えなし"?null:r.limitRate[t])}</td>)}</tr>)}</tbody></table></div>
+      <div style={{fontWeight:700,fontSize:"12px",margin:"14px 0 4px"}}>目的の傾向・アパレルへの関心（1人が複数に入ることがあります）</div>
+      <div className="plc-wrap"><table className="htbl plc-tbl"><thead><tr><th>配信先</th><th>回答あり</th>{q.purposes.map(p=><th key={p}>{p}</th>)}<th>アパレルの関心が明確</th></tr></thead>
+        <tbody>{q.rows.map(r=><tr key={r.label}>{label(r)}<td>{r.words}人</td>{q.purposes.map(p=><td key={p}>{cell(r.purposes[p],r.purposeRate[p])}</td>)}<td>{cell(r.apparel,r.apparelRate)}</td></tr>)}</tbody></table></div>
+      <div style={{fontWeight:700,fontSize:"12px",margin:"14px 0 4px"}}>説明会申込・成約（成約はオプトから{q.confirmDays}日以上の人だけ。新しい人の申込は「判定前」）</div>
+      <div className="plc-wrap"><table className="htbl plc-tbl"><thead><tr><th>配信先</th><th>説明会申込</th><th>判定前</th><th>成約</th><th>ライト</th><th>プレミアム</th><th>ブラック（一括以外）</th><th>ブラック一括</th><th>プラン不明</th></tr></thead>
+        <tbody>{q.rows.map(r=><tr key={r.label}>{label(r)}<td>{r.consult}人</td><td>{r.pending}人</td><td>{r.closeN}人</td>{["ライト","プレミアム","ブラック（一括以外）","ブラック一括","プラン不明"].map(p=><td key={p}>{r.closes[p]}人</td>)}</tr>)}</tbody></table></div>
+      <div className="meta-line" style={{marginTop:"10px"}}>5人未満の行は人数だけ、{q.roughN}人未満の行は「目安」です。</div>
     </div>
   );
 }
