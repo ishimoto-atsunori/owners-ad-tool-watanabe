@@ -2495,6 +2495,86 @@ function TestPlan(){
   );
 }
 
+/* ============================================================
+   配信先別（?type=placement）。消化は Meta、人数は自社データ。人数だけを受け取る
+   ============================================================ */
+function PlacementView(){
+  const ymd=(d)=>{ const t=new Date(d.getTime()+9*3600000); return t.toISOString().slice(0,10); };
+  const [until,setUntil]=useState(()=>ymd(new Date(Date.now()-86400000)));
+  const [since,setSince]=useState(()=>ymd(new Date(Date.now()-30*86400000)));
+  const [adKey,setAdKey]=useState("");
+  const [keys,setKeys]=useState([]);
+  const [view,setView]=useState(null);
+  const [state,setState]=useState("idle");
+  const [err,setErr]=useState("");
+  async function load(k){
+    setState("loading"); setErr("");
+    try{
+      const url=API+"?type=placement&since="+encodeURIComponent(since)+"&until="+encodeURIComponent(until)+"&adKey="+encodeURIComponent(k)+"&_="+Date.now();
+      const raw=await jsonpRetry(url, 2, 60000);
+      if(!raw || raw.ok===false){ setErr((raw&&raw.error)||"取得に失敗しました"); setState("error"); return; }
+      setView(raw); setKeys(raw.keys||[]); setState("done");
+    }catch(e){ setErr("取得に失敗しました（"+e.message+"）"); setState("error"); }
+  }
+  useEffect(()=>{ load(adKey); },[]);
+  const n=(v)=>isNum(v)?Number(v).toLocaleString("ja-JP"):"—";
+  const pc=(v)=>isNum(v)?(Number(v)*100).toFixed(1)+"%":"—";
+  const people=(r,v)=>r.hasPeople===false?"—":n(v);
+  return (
+    <div>
+      <div className="row-controls">
+        <div className="dz">
+          <input type="date" value={since} max={until} onChange={e=>setSince(e.target.value)} />
+          <span className="dz-sep">〜</span>
+          <input type="date" value={until} min={since} onChange={e=>setUntil(e.target.value)} />
+          <button className="dz-go" onClick={()=>load(adKey)}>表示</button>
+        </div>
+        <select value={adKey} onChange={e=>{ setAdKey(e.target.value); load(e.target.value); }}>
+          <option value="">全CR</option>
+          {keys.map(k=><option key={k.key} value={k.key}>{k.key}（オプト{k.opts}）</option>)}
+        </select>
+      </div>
+      <div className="meta-line">{(view&&view.note)||"消化は Meta の数字、人数は自社データです。"}</div>
+      {state==="error"? <div className="empty">{err}</div> : null}
+      {state==="loading"&&!view? <div className="loadwrap"><div className="spin"></div>読み込み中…</div> : null}
+      {view? (
+        <div className="htbl-wrap" style={{opacity:state==="loading"?0.5:1}}>
+          <table className="htbl">
+            <thead><tr>
+              <th>配信先</th><th>消化</th><th>Metaのオプト（参考）</th><th>オプト（自社）</th><th>オプト単価</th><th>Day1提出数</th><th>Day1提出率（暫定）</th><th>Day1提出率（確定）</th><th>Day1単価</th><th>Day2以降</th><th>説明会申込</th><th>成約</th>
+            </tr></thead>
+            <tbody>
+              {view.rows.map((r,i)=>(
+                <tr key={i} style={r.label==="合計"?{fontWeight:800}:null}>
+                  <td style={r.parent?{paddingLeft:"28px",color:"var(--sub)"}:{fontWeight:700}}>{r.label}</td>
+                  <td className="num">{yen(r.spend)}</td>
+                  <td style={{color:"var(--sub)"}}>{n(r.metaOpts)}</td>
+                  <td>{people(r,r.opts)}</td>
+                  <td>{r.hasPeople===false?"—":(isNum(r.cpa)?yen(r.cpa):"—")}</td>
+                  <td>{people(r,r.day1)}</td>
+                  <td>{r.hasPeople===false?"—":pc(r.day1Rate)}</td>
+                  <td>{r.hasPeople===false?"—":pc(r.confRate)}{r.hasPeople!==false&&r.rough?<span className="pill" style={{marginLeft:"6px"}}>目安</span>:null}</td>
+                  <td>{r.hasPeople===false?"—":(isNum(r.day1Cost)?yen(r.day1Cost):"—")}</td>
+                  <td>{people(r,r.day2)}</td>
+                  <td>{people(r,r.consult)}</td>
+                  <td>{people(r,r.close)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ):null}
+      {view? (
+        <div className="meta-line" style={{marginTop:"14px"}}>
+          確定＝オプトから{view.confirmDays}日以上たった人だけ（分母が{view.roughN}人未満は「目安」）。Day1単価＝消化 ÷ Day1提出数。「不明」の行の Day1 以降には、UTAGE でメールが見つからない {n(view.unmatched)}人を足しています。フィード・ストーリーズ・リールの人数は plc 付きの登録から来た人だけで、ない行は「—」です（今の plc 付きの登録：{n(view.plcCheck&&view.plcCheck.plc付きの登録)}人）。「Metaのオプト（参考）」は Meta が数えた数字で、自社の人数とは別です。
+          {(view.match&&view.match.onlyMeta&&view.match.onlyMeta.length)?"　消化はあるがオプトの無いCR："+view.match.onlyMeta.length+"本。":""}
+          <br/>対応表：{(view.map||[]).map(m=>m.label+"＝utm_source "+m.utm+"／Meta "+m.meta).join("　")}
+        </div>
+      ):null}
+    </div>
+  );
+}
+
 const TABS=[
   {id:"dash", icon:"layout-dashboard", label:"ダッシュボード"},
   {id:"crea", icon:"images", label:"クリエイティブ一覧"},
@@ -2502,6 +2582,7 @@ const TABS=[
   {id:"testplan", icon:"calendar-check", label:"テスト予定"},
   {id:"sales", icon:"handshake", label:"営業分析"},
   {id:"hist", icon:"line-chart", label:"7日間履歴"},
+  {id:"placement", icon:"line-chart", label:"配信先別"},
   {id:"search", icon:"search", label:"検索"},
 ];
 
@@ -2675,6 +2756,7 @@ function App(){
           {tab==="testplan"&& <TestPlan />}
           {tab==="sales"  && <SalesAnalysis sales={sales} summary={summary} adQ={adQuery} setAdQ={setAdQuery} tagData={tagData} setTagData={setTagData} tagState={tagState} onTagRetry={loadTags} selTags={selTags} setSelTags={setSelTags} />}
           {tab==="hist"   && <History history={history} summary={summary} />}
+          {tab==="placement" && <PlacementView />}
           {tab==="search" && <Search data={summary} />}
         </div>
       </div>
