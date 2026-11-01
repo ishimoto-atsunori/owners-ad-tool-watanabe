@@ -195,6 +195,14 @@
   .hcard-head img,.hcard-head .ph{width:46px;height:46px;border-radius:11px;object-fit:cover;flex-shrink:0;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:9px;}
   .hcard-head .hk{font-size:12.5px;color:var(--blue);font-weight:700;font-family:ui-monospace,monospace;word-break:break-all;}
   .htbl-wrap{overflow-x:auto;}
+  /* 配信先別の表：見出しを折り返して幅を詰める。入りきらないときは表だけ横に動かす */
+  .plc-wrap{overflow-x:auto;padding-bottom:6px;}
+  .plc-wrap::-webkit-scrollbar{height:10px;}
+  .plc-wrap::-webkit-scrollbar-thumb{background:#c9ced6;border-radius:6px;}
+  table.htbl.plc-tbl{font-size:12px;width:100%;}
+  table.htbl.plc-tbl th{white-space:normal;line-height:1.3;min-width:52px;padding:8px 6px;font-size:11px;}
+  table.htbl.plc-tbl td{padding:8px 6px;white-space:nowrap;}
+  table.htbl.plc-tbl th:first-child,table.htbl.plc-tbl td:first-child{position:sticky;left:0;background:var(--panel,#fff);z-index:1;}
   table.htbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px;}
   table.htbl th,table.htbl td{padding:10px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);}
   table.htbl th{background:var(--panel2);color:var(--sub);font-weight:700;font-size:11px;text-align:right;}
@@ -2538,10 +2546,10 @@ function PlacementView(){
       {state==="error"? <div className="empty">{err}</div> : null}
       {state==="loading"&&!view? <div className="loadwrap"><div className="spin"></div>読み込み中…</div> : null}
       {view? (
-        <div className="htbl-wrap" style={{opacity:state==="loading"?0.5:1}}>
-          <table className="htbl">
+        <div className="plc-wrap" style={{opacity:state==="loading"?0.5:1}}>
+          <table className="htbl plc-tbl">
             <thead><tr>
-              <th>配信先</th><th>消化</th><th>Metaのオプト（参考）</th><th>オプト（自社）</th><th>オプト単価</th><th>Day1提出数</th><th>Day1提出率（暫定）</th><th>Day1提出率（確定）</th><th>Day1単価</th><th>Day2以降</th><th>説明会申込</th><th>成約</th>
+              <th>配信先</th><th>消化</th><th>オプト（Meta）</th><th>オプト単価（Meta）</th><th>オプト（自社）</th><th>オプト単価（自社）</th><th>Day1提出数</th><th>Day1提出率（暫定）</th><th>Day1提出率（確定）</th><th>Day1単価</th><th>Day2以降</th><th>説明会申込</th><th>成約</th>
             </tr></thead>
             <tbody>
               {view.rows.map((r,i)=>(
@@ -2549,6 +2557,7 @@ function PlacementView(){
                   <td style={r.parent?{paddingLeft:"28px",color:"var(--sub)"}:{fontWeight:700}}>{r.label}</td>
                   <td className="num">{yen(r.spend)}</td>
                   <td style={{color:"var(--sub)"}}>{n(r.metaOpts)}</td>
+                  <td style={{color:"var(--sub)"}}>{isNum(r.metaCpa)?yen(r.metaCpa):"—"}</td>
                   <td>{people(r,r.opts)}</td>
                   <td>{r.hasPeople===false?"—":(isNum(r.cpa)?yen(r.cpa):"—")}</td>
                   <td>{people(r,r.day1)}</td>
@@ -2566,7 +2575,7 @@ function PlacementView(){
       ):null}
       {view? (
         <div className="meta-line" style={{marginTop:"14px"}}>
-          確定＝オプトから{view.confirmDays}日以上たった人だけ（分母が{view.roughN}人未満は「目安」）。Day1単価＝消化 ÷ Day1提出数。「不明」の行の Day1 以降には、UTAGE でメールが見つからない {n(view.unmatched)}人を足しています。フィード・ストーリーズ・リールの人数は plc 付きの登録から来た人だけで、ない行は「—」です（今の plc 付きの登録：{n(view.plcCheck&&view.plcCheck.plc付きの登録)}人）。「Metaのオプト（参考）」は Meta が数えた数字で、自社の人数とは別です。
+          確定＝オプトから{view.confirmDays}日以上たった人だけ（分母が{view.roughN}人未満は「目安」）。Day1単価＝消化 ÷ Day1提出数。「不明」の行の Day1 以降には、UTAGE でメールが見つからない {n(view.unmatched)}人を足しています。フィード・ストーリーズ・リールの人数は plc 付きの登録から来た人だけで、ない行は「—」です（今の plc 付きの登録：{n(view.plcCheck&&view.plcCheck.plc付きの登録)}人）。Metaの数字は広告マネージャと同じ数え方（クリック後7日・表示後1日以内の登録）です。自社の人数とは少しずれます。
           {(view.match&&view.match.onlyMeta&&view.match.onlyMeta.length)?"　消化はあるがオプトの無いCR："+view.match.onlyMeta.length+"本。":""}
           <br/>対応表：{(view.map||[]).map(m=>m.label+"＝utm_source "+m.utm+"／Meta "+m.meta).join("　")}
         </div>
